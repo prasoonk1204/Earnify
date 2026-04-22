@@ -11,9 +11,9 @@ if ! command -v rustc >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! rustup target list --installed | grep -q 'wasm32-unknown-unknown'; then
-  echo "Error: wasm32 target is missing."
-  echo "Install with: rustup target add wasm32-unknown-unknown"
+if ! rustup target list --installed | grep -q 'wasm32v1-none'; then
+  echo "Error: wasm32v1-none target is missing."
+  echo "Install with: rustup target add wasm32v1-none"
   exit 1
 fi
 

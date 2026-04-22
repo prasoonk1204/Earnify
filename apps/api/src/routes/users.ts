@@ -3,9 +3,9 @@ import { Router } from "express";
 import { prisma } from "@earnify/db";
 import * as StellarSdk from "@stellar/stellar-sdk";
 
-import { requireAuth } from "../../middleware/auth";
-import { triggerCreatorPayout } from "../services/sorobanClient";
-import { sendError, sendSuccess } from "../utils/api-response";
+import { requireAuth } from "../../middleware/auth.ts";
+import { triggerCreatorPayout } from "../services/sorobanClient.ts";
+import { sendError, sendSuccess } from "../utils/api-response.ts";
 
 const usersRouter = Router();
 

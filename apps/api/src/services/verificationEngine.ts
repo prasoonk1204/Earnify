@@ -2,8 +2,8 @@ import axios from "axios";
 import { CampaignStatus, PostStatus, SocialPlatform, prisma } from "@earnify/db";
 import { load } from "cheerio";
 
-import { runAiDetection } from "./aiDetection";
-import { calculateScore } from "./scoringEngine";
+import { runAiDetection } from "./aiDetection.ts";
+import { calculateScore } from "./scoringEngine.ts";
 
 type ExtractedContent = {
   ogTitle: string;

@@ -1,8 +1,8 @@
 import { prisma } from "@earnify/db";
 
-import { emitLeaderboardUpdate } from "../websocket";
-import { getTopN, updateScore } from "./leaderboard";
-import { updateCreatorScore } from "./sorobanClient";
+import { emitLeaderboardUpdate } from "../websocket.ts";
+import { getTopN, updateScore } from "./leaderboard.ts";
+import { updateCreatorScore } from "./sorobanClient.ts";
 
 function computePostScore(input: {
   views: number;

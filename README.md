@@ -42,7 +42,7 @@ Set `DATABASE_URL` in `.env` to your Neon connection string first, then run:
    ```
 2. Add WASM target:
    ```bash
-   rustup target add wasm32-unknown-unknown
+   rustup target add wasm32v1-none
    ```
 3. Install Stellar CLI:
    ```bash

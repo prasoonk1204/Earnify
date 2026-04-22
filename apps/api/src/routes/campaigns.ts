@@ -3,16 +3,16 @@ import { Router } from "express";
 import { CampaignStatus, prisma } from "@earnify/db";
 import * as StellarSdk from "@stellar/stellar-sdk";
 
-import { requireAuth, requireRole } from "../../middleware/auth";
-import { getTopN } from "../services/leaderboard";
+import { requireAuth, requireRole } from "../../middleware/auth.ts";
+import { getTopN } from "../services/leaderboard.ts";
 import {
   deployCampaignContract,
   endCampaign,
   getCampaignInfo,
   getContractBalance,
   triggerCreatorPayout
-} from "../services/sorobanClient";
-import { sendError, sendSuccess } from "../utils/api-response";
+} from "../services/sorobanClient.ts";
+import { sendError, sendSuccess } from "../utils/api-response.ts";
 
 const campaignsRouter = Router();
 

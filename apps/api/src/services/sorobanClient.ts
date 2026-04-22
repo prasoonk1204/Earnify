@@ -22,7 +22,17 @@ const contractWasmPath =
 
 const sdk = StellarSdk as unknown as {
   Horizon: { Server: new (url: string) => any };
-  SorobanRpc: {
+  SorobanRpc?: {
+    Server: new (url: string, options?: { allowHttp?: boolean }) => any;
+    Api: {
+      isSimulationError: (value: unknown) => boolean;
+      isSimulationRestore: (value: unknown) => boolean;
+      isSimulationSuccess: (value: unknown) => boolean;
+      isGetTransactionPending: (value: unknown) => boolean;
+    };
+    assembleTransaction: (tx: any, simulation: unknown) => any;
+  };
+  rpc?: {
     Server: new (url: string, options?: { allowHttp?: boolean }) => any;
     Api: {
       isSimulationError: (value: unknown) => boolean;
@@ -56,7 +66,11 @@ const sdk = StellarSdk as unknown as {
 };
 
 const horizon = new sdk.Horizon.Server(horizonUrl);
-const sorobanRpc = new sdk.SorobanRpc.Server(sorobanRpcUrl, {
+const sorobanNamespace = sdk.SorobanRpc ?? sdk.rpc;
+if (!sorobanNamespace) {
+  throw new Error("Soroban RPC namespace not found in @stellar/stellar-sdk");
+}
+const sorobanRpc = new sorobanNamespace.Server(sorobanRpcUrl, {
   allowHttp: sorobanRpcUrl.startsWith("http://")
 });
 
@@ -112,11 +126,11 @@ async function withSorobanInvocation(params: {
     .build();
 
   const simulation = await sorobanRpc.simulateTransaction(tx);
-  if (sdk.SorobanRpc.Api.isSimulationError(simulation)) {
+  if (sorobanNamespace.Api.isSimulationError(simulation)) {
     throw new Error(`Simulation failed for ${params.method}`);
   }
 
-  const assembled = sdk.SorobanRpc.assembleTransaction(tx, simulation).build();
+  const assembled = sorobanNamespace.assembleTransaction(tx, simulation).build();
   assembled.sign(sourceKeypair);
 
   const submission = await sorobanRpc.sendTransaction(assembled);
@@ -280,6 +294,7 @@ async function deployCampaignContract(
 
   const contractId = parseContractId(stdout);
   const founderKeypair = sdk.Keypair.fromSecret(founderSecret);
+  const adminPublicKey = sdk.Keypair.fromSecret(admin).publicKey();
 
   const initialize = await withSorobanInvocation({
     campaignContractId: contractId,
@@ -287,6 +302,7 @@ async function deployCampaignContract(
     sourceSecret: founderSecret,
     args: [
       sdk.nativeToScVal(founderKeypair.publicKey(), { type: "address" }),
+      sdk.nativeToScVal(adminPublicKey, { type: "address" }),
       sdk.nativeToScVal(toStroops(totalBudgetXLM), { type: "i128" })
     ]
   });

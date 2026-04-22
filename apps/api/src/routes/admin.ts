@@ -1,8 +1,8 @@
 import { Router } from "express";
 
-import { requireAuth, requireRole } from "../../middleware/auth";
-import { runEngagementRefreshCycle } from "../jobs/engagementCron";
-import { sendError, sendSuccess } from "../utils/api-response";
+import { requireAuth, requireRole } from "../../middleware/auth.ts";
+import { runEngagementRefreshCycle } from "../jobs/engagementCron.ts";
+import { sendError, sendSuccess } from "../utils/api-response.ts";
 
 const adminRouter = Router();
 

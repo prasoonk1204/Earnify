@@ -2,8 +2,8 @@ import cron from "node-cron";
 
 import { CampaignStatus, PostStatus, prisma } from "@earnify/db";
 
-import { fetchEngagement } from "../services/engagementFetcher";
-import { calculateScore } from "../services/scoringEngine";
+import { fetchEngagement } from "../services/engagementFetcher.ts";
+import { calculateScore } from "../services/scoringEngine.ts";
 
 type EngagementRefreshSummary = {
   skipped: boolean;

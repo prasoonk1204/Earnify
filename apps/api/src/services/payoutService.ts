@@ -1,8 +1,8 @@
 import * as StellarSdk from "@stellar/stellar-sdk";
 import { CampaignStatus, PayoutStatus, prisma } from "@earnify/db";
 
-import { decryptSecretKey } from "./stellar";
-import { emitPayoutUpdate } from "../websocket";
+import { decryptSecretKey } from "./stellar.ts";
+import { emitPayoutUpdate } from "../websocket.ts";
 
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
 const NETWORK_PASSPHRASE = StellarSdk.Networks.TESTNET;

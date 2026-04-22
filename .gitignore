@@ -4,7 +4,9 @@ dist
 coverage
 .turbo
 .env
+.env.bak
 .env.local
 packages/db/generated
 packages/db/prisma/dev.db
-
+contracts/earnify-campaign/target
+contracts/earnify-campaign/Cargo.lock
