@@ -17,7 +17,7 @@ Earnify is a creator marketing platform where founders launch campaigns and crea
 └──────────────┬───────────────────┬────────────┘
                │                   │
      ┌─────────▼─────────┐   ┌────▼─────────────┐
-     │   PostgreSQL      │   │      Redis        │
+     │  Neon Postgres    │   │  Upstash Redis    │
      │ - Users/Campaigns │   │ - Live leaderboard│
      │ - Posts/Scores    │   │ - Rank snapshots  │
      │ - Payout records  │   └───────────────────┘
@@ -30,6 +30,7 @@ Earnify is a creator marketing platform where founders launch campaigns and crea
 ```
 
 ## 3) Quick start
+Set `DATABASE_URL` in `.env` to your Neon connection string first, then run:
 ```bash
 ./scripts/setup.sh
 ```
@@ -87,7 +88,7 @@ Edit apps/web/styles/theme.ts to change the entire UI
 ## 6) Tech stack
 - Next.js 16 + React 19 (frontend)
 - Express 5 + Socket.IO (API + realtime)
-- PostgreSQL + Prisma ORM (primary data)
-- Redis (leaderboard state)
+- Neon Postgres + Prisma ORM (primary data)
+- Upstash Redis (leaderboard state)
 - Stellar Soroban + Stellar testnet SDK (real on-chain payouts)
 - pnpm workspaces + TypeScript (monorepo/tooling)

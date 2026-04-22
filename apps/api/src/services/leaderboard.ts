@@ -1,9 +1,8 @@
 import { prisma } from "@earnify/db";
 import type { LeaderboardEntry } from "@earnify/shared";
-import Redis from "ioredis";
+import { Redis } from "@upstash/redis";
 
-const redisUrl = process.env.REDIS_URL ?? process.env.UPSTASH_REDIS_URL ?? "redis://localhost:6379";
-const redis = new Redis(redisUrl);
+const redis = Redis.fromEnv();
 
 function getLeaderboardKey(campaignId: string) {
   return `leaderboard:campaign:${campaignId}`;
@@ -28,12 +27,17 @@ function resolveRankChange(previousRank: string | null, currentRank: number): Le
 }
 
 async function updateScore(campaignId: string, userId: string, score: number) {
-  await redis.zadd(getLeaderboardKey(campaignId), score, userId);
+  await redis.zadd(getLeaderboardKey(campaignId), { score, member: userId });
 }
 
 async function getTopN(campaignId: string, n = 10): Promise<LeaderboardEntry[]> {
   const limit = Math.max(1, n);
-  const serializedLeaderboard = await redis.zrevrange(getLeaderboardKey(campaignId), 0, limit - 1, "WITHSCORES");
+  const serializedLeaderboard = await redis.zrange<Array<string | number>>(
+    getLeaderboardKey(campaignId),
+    0,
+    limit - 1,
+    { rev: true, withScores: true }
+  );
 
   if (serializedLeaderboard.length === 0) {
     return [];
@@ -43,14 +47,14 @@ async function getTopN(campaignId: string, n = 10): Promise<LeaderboardEntry[]> 
   const scoreByUserId = new Map<string, number>();
 
   for (let index = 0; index < serializedLeaderboard.length; index += 2) {
-    const userId = serializedLeaderboard[index];
+    const userId = String(serializedLeaderboard[index]);
     const score = Number(serializedLeaderboard[index + 1] ?? 0);
 
     userIds.push(userId);
     scoreByUserId.set(userId, score);
   }
 
-  const previousRanks = await redis.hmget(getPreviousRankKey(campaignId), ...userIds);
+  const previousRanksByUserId = await redis.hmget<Record<string, string | null>>(getPreviousRankKey(campaignId), ...userIds);
 
   const [users, postCounts] = await Promise.all([
     prisma.user.findMany({
@@ -100,15 +104,17 @@ async function getTopN(campaignId: string, n = 10): Promise<LeaderboardEntry[]> 
       userAvatar: user.avatar,
       score: scoreByUserId.get(userId) ?? 0,
       postCount: postCountByUserId.get(userId) ?? 0,
-      change: resolveRankChange(previousRanks[index] ?? null, rank)
+      change: resolveRankChange(previousRanksByUserId?.[userId] ?? null, rank)
     });
   }
 
   if (leaderboard.length > 0) {
-    const pipeline = redis.multi();
+    const pipeline = redis.pipeline();
 
     for (const entry of leaderboard) {
-      pipeline.hset(getPreviousRankKey(campaignId), entry.userId, entry.rank.toString());
+      pipeline.hset(getPreviousRankKey(campaignId), {
+        [entry.userId]: entry.rank.toString()
+      });
     }
 
     pipeline.expire(getPreviousRankKey(campaignId), 60 * 60 * 24);
@@ -125,7 +131,7 @@ async function getUserRank(campaignId: string, userId: string) {
 async function getUserScore(campaignId: string, userId: string) {
   const score = await redis.zscore(getLeaderboardKey(campaignId), userId);
 
-  if (!score) {
+  if (score === null || score === undefined) {
     return null;
   }
 

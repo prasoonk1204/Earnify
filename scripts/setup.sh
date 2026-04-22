@@ -30,13 +30,22 @@ else
   echo "Created .env from .env.example"
 fi
 
-if command -v docker-compose >/dev/null 2>&1; then
-  docker-compose up -d
-else
-  docker compose up -d
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  if [[ -f ".env" ]]; then
+    database_url_line="$(grep -E '^DATABASE_URL=' .env | tail -n 1 || true)"
+    if [[ -n "$database_url_line" ]]; then
+      DATABASE_URL="${database_url_line#DATABASE_URL=}"
+      export DATABASE_URL
+    fi
+  fi
 fi
 
-pnpm --filter @earnify/db exec prisma migrate deploy --config prisma.config.ts
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  echo "Error: DATABASE_URL is required. Set it in .env to your Neon connection string."
+  exit 1
+fi
+
+PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 pnpm --filter @earnify/db exec prisma migrate deploy --config prisma.config.ts
 pnpm --filter @earnify/db db:seed
 
 cleanup() {
