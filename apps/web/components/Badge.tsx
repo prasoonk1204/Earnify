@@ -20,43 +20,43 @@ const badgeMeta: Record<
     icon: string;
     textColor: string;
     background: string;
-    borderColor: string;
+    glowColor: string;
   }
 > = {
   "Top Performer": {
     label: "Top Performer",
     icon: "🔥",
-    textColor: "var(--color-accent)",
-    background: "color-mix(in srgb, var(--color-accent) 18%, var(--color-surface))",
-    borderColor: "color-mix(in srgb, var(--color-accent) 46%, var(--color-border))"
+    textColor: "text-[#F59E0B]", // amber
+    background: "bg-[#F59E0B]/10",
+    glowColor: "shadow-[0_0_10px_-2px_rgba(245,158,11,0.3)]",
   },
   "Verified Creator": {
     label: "Verified Creator",
     icon: "✔",
-    textColor: "var(--color-success)",
-    background: "color-mix(in srgb, var(--color-success) 16%, var(--color-surface))",
-    borderColor: "color-mix(in srgb, var(--color-success) 40%, var(--color-border))"
+    textColor: "text-[#10B981]", // success
+    background: "bg-[#10B981]/10",
+    glowColor: "shadow-[0_0_10px_-2px_rgba(16,185,129,0.3)]",
   },
   "Viral Post": {
     label: "Viral Post",
     icon: "🚀",
-    textColor: "var(--color-secondary)",
-    background: "color-mix(in srgb, var(--color-secondary) 12%, var(--color-surface))",
-    borderColor: "color-mix(in srgb, var(--color-secondary) 38%, var(--color-border))"
+    textColor: "text-[#6366F1]", // primary
+    background: "bg-[#6366F1]/10",
+    glowColor: "shadow-[0_0_10px_-2px_rgba(99,102,241,0.3)]",
   },
   "5-Campaign Pro": {
     label: "5-Campaign Pro",
     icon: "🏆",
-    textColor: "var(--color-primary)",
-    background: "color-mix(in srgb, var(--color-primary) 14%, var(--color-surface))",
-    borderColor: "color-mix(in srgb, var(--color-primary) 36%, var(--color-border))"
+    textColor: "text-[#8B5CF6]", // purple
+    background: "bg-[#8B5CF6]/10",
+    glowColor: "shadow-[0_0_10px_-2px_rgba(139,92,246,0.3)]",
   },
   "Early Adopter": {
     label: "Early Adopter",
     icon: "⭐",
-    textColor: "var(--color-muted)",
-    background: "color-mix(in srgb, var(--color-muted) 12%, var(--color-surface))",
-    borderColor: "color-mix(in srgb, var(--color-muted) 36%, var(--color-border))"
+    textColor: "text-[#94A3B8]", // muted
+    background: "bg-[#94A3B8]/10",
+    glowColor: "",
   }
 };
 
@@ -92,12 +92,9 @@ function Badge({ badge, compact = false }: BadgeProps) {
   return (
     <span
       title={meta.label}
-      className={`inline-flex items-center gap-1 rounded-full border font-semibold ${compact ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-1 text-xs"}`}
-      style={{
-        color: meta.textColor,
-        backgroundColor: meta.background,
-        borderColor: meta.borderColor
-      }}
+      className={`inline-flex items-center gap-1.5 rounded-full font-bold ${meta.background} ${meta.textColor} ${meta.glowColor} ${
+        compact ? "px-2 py-0.5 text-[10px]" : "px-3 py-1.5 text-xs"
+      }`}
     >
       <span aria-hidden>{meta.icon}</span>
       {!compact ? <span>{meta.label}</span> : null}

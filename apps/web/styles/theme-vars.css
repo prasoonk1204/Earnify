@@ -1,15 +1,15 @@
 /* This file is generated from styles/theme.ts. Do not edit directly. */
 
 :root {
-  --token-color-primary: #0f766e;
-  --token-color-secondary: #1d4ed8;
-  --token-color-accent: #f59e0b;
-  --token-color-danger: #dc2626;
-  --token-color-success: #16a34a;
-  --token-color-muted: #64748b;
-  --token-color-background: #f8fafc;
-  --token-color-surface: #ffffff;
-  --token-color-border: #dbe4ee;
+  --token-color-primary: #6366F1;
+  --token-color-secondary: #10B981;
+  --token-color-accent: #8B5CF6;
+  --token-color-danger: #EF4444;
+  --token-color-success: #10B981;
+  --token-color-muted: #9CA3AF;
+  --token-color-background: #0D0F14;
+  --token-color-surface: #1A1D27;
+  --token-color-border: #2A2D3A;
   --token-font-sans: "Sora", "Segoe UI", sans-serif;
   --token-font-size-xs: 0.75rem;
   --token-font-size-sm: 0.875rem;
@@ -44,15 +44,15 @@
 
 
 @theme inline {
-  --color-primary: #0f766e;
-  --color-secondary: #1d4ed8;
-  --color-accent: #f59e0b;
-  --color-danger: #dc2626;
-  --color-success: #16a34a;
-  --color-muted: #64748b;
-  --color-background: #f8fafc;
-  --color-surface: #ffffff;
-  --color-border: #dbe4ee;
+  --color-primary: #6366F1;
+  --color-secondary: #10B981;
+  --color-accent: #8B5CF6;
+  --color-danger: #EF4444;
+  --color-success: #10B981;
+  --color-muted: #9CA3AF;
+  --color-background: #0D0F14;
+  --color-surface: #1A1D27;
+  --color-border: #2A2D3A;
   --font-sans: "Sora", "Segoe UI", sans-serif;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;

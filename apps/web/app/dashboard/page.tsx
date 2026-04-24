@@ -300,76 +300,117 @@ function DashboardPage() {
   }, [earnings, user?.id]);
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 md:py-8 lg:px-10">
-      <section className="mx-auto grid w-full max-w-7xl gap-6 lg:gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-        <div className="space-y-6">
-          <header className="space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">Campaign Dashboard</p>
-            <h1 className="text-2xl font-semibold text-secondary sm:text-3xl lg:text-4xl">
-              Discover active reward campaigns
-            </h1>
-            <p className="max-w-3xl text-sm leading-7 text-muted">
-              Join campaigns, submit high-performing content, and climb the leaderboard to earn payout allocation.
-            </p>
-          </header>
+    <main className="min-h-screen bg-[var(--color-background)] text-[#e2e8f0] pb-20">
+      <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+        
+        {/* Header */}
+        <header className="mb-10 text-center md:text-left">
+          <p className="text-sm font-semibold uppercase tracking-wider text-[var(--color-primary)]">Campaign Dashboard</p>
+          <h1 className="mt-2 text-3xl font-bold text-white sm:text-4xl">Discover active reward campaigns</h1>
+          <p className="mt-4 max-w-2xl text-lg text-[var(--color-muted)]">
+            Join campaigns, submit high-performing content, and climb the leaderboard to earn payout allocation.
+          </p>
+        </header>
 
-          {loadingCampaigns ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-2">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={`campaign-skeleton-${index}`} className="rounded-lg border border-border bg-surface p-5">
-                  <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="mt-3 h-4 w-full" />
-                  <Skeleton className="mt-2 h-4 w-5/6" />
-                  <Skeleton className="mt-5 h-2 w-full" />
-                  <div className="mt-6 flex justify-between">
-                    <Skeleton className="h-4 w-20" />
-                    <Skeleton className="h-8 w-28" />
+        <div className="grid gap-8 lg:grid-cols-[1fr_350px]">
+          
+          {/* Main Content (Campaigns) */}
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-white">Live Campaigns</h2>
+            
+            {loadingCampaigns ? (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={`campaign-skeleton-${index}`} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-6">
+                    <Skeleton className="h-6 w-2/3 rounded-md bg-[#2A2D3A]" />
+                    <Skeleton className="mt-4 h-4 w-full rounded-md bg-[#2A2D3A]" />
+                    <Skeleton className="mt-2 h-4 w-5/6 rounded-md bg-[#2A2D3A]" />
+                    <Skeleton className="mt-6 h-3 w-full rounded-full bg-[#2A2D3A]" />
+                    <div className="mt-6 flex justify-between">
+                      <Skeleton className="h-8 w-16 rounded-md bg-[#2A2D3A]" />
+                      <Skeleton className="h-8 w-24 rounded-full bg-[#2A2D3A]" />
+                    </div>
                   </div>
+                ))}
+              </div>
+            ) : null}
+
+            {campaignError ? <p className="text-sm text-[var(--color-danger)]">{campaignError}</p> : null}
+
+            {!loadingCampaigns && !campaignError && campaigns.length > 0 ? (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                {campaigns.map((campaign) => (
+                  <CampaignCard
+                    key={campaign.id}
+                    campaign={{
+                      id: campaign.id,
+                      title: campaign.title,
+                      description: campaign.description,
+                      budgetTotal: campaign.totalBudget,
+                      budgetRemaining: campaign.remainingBudget,
+                      participants: campaign.postCount,
+                      founder: { name: "Stellar Dev", avatar: "" },
+                      platforms: ["X", "LinkedIn", "Instagram"],
+                      daysLeft: 7
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null}
+
+            {!loadingCampaigns && !campaignError && campaigns.length === 0 ? (
+              <EmptyState
+                variant="campaigns"
+                title="No campaigns yet"
+                description="Campaigns will appear here as soon as founders launch them."
+              />
+            ) : null}
+          </div>
+
+          {/* Sidebar (Earnings & Payouts) */}
+          {user?.role === "USER" ? (
+            <aside className="space-y-6">
+              
+              {/* Earnings Card */}
+              <div className="rounded-2xl border border-[var(--color-secondary)]/30 bg-gradient-to-b from-[var(--color-surface)] to-[var(--color-background)] p-6 shadow-[0_0_40px_-10px_rgba(16,185,129,0.15)]">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-white">Estimated Earnings</h2>
+                  <span className="text-xs text-[var(--color-muted)]">Final payout on end</span>
                 </div>
-              ))}
-            </div>
-          ) : null}
 
-          {campaignError ? <p className="text-sm text-danger">{campaignError}</p> : null}
-
-          {!loadingCampaigns && !campaignError && campaigns.length > 0 ? (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              {campaigns.map((campaign) => (
-                <CampaignCard key={campaign.id} {...campaign} />
-              ))}
-            </div>
-          ) : null}
-
-          {!loadingCampaigns && !campaignError && campaigns.length === 0 ? (
-            <EmptyState
-              variant="campaigns"
-              title="No campaigns yet"
-              description="Campaigns will appear here as soon as founders launch them."
-            />
-          ) : null}
-        </div>
-
-        {user?.role === "USER" ? (
-          <aside className="space-y-6">
-            <section
-              className="space-y-5 rounded-lg border border-border p-5 md:p-6"
-              style={{
-                background:
-                  "linear-gradient(140deg, color-mix(in srgb, var(--color-success) 10%, white), var(--color-surface))",
-                boxShadow: "0 20px 45px color-mix(in srgb, var(--color-success) 10%, transparent)"
-              }}
-            >
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-success">My Earnings</p>
-                  <h2 className="mt-1 text-xl font-semibold text-secondary sm:text-2xl">Estimated campaign payouts</h2>
+                <div className="text-4xl font-extrabold text-[var(--color-secondary)] mb-6">
+                  {formatXlm(earnings.reduce((sum, entry) => sum + entry.estimatedPayout, 0))} <span className="text-xl">XLM</span>
                 </div>
-                <p className="text-xs font-medium text-muted">Estimated — final payout on campaign end</p>
+
+                {loadingEarnings ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-10 w-full rounded-md bg-[#2A2D3A]" />
+                    <Skeleton className="h-10 w-full rounded-md bg-[#2A2D3A]" />
+                  </div>
+                ) : earningsError ? (
+                  <p className="text-sm text-[var(--color-danger)]">{earningsError}</p>
+                ) : earnings.length === 0 ? (
+                  <p className="text-sm text-[var(--color-muted)] text-center py-4">No verified earnings yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {earnings.map((entry) => (
+                      <div key={entry.campaignId} className="flex justify-between items-center rounded-lg bg-[var(--color-surface)] p-3 border border-[var(--color-border)]">
+                        <div className="truncate pr-4">
+                          <p className="text-sm font-semibold text-white truncate">{entry.campaignTitle}</p>
+                          <p className="text-xs text-[var(--color-muted)]">{entry.posts} posts • {entry.currentScore.toFixed(1)} score</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-[var(--color-secondary)]">+{formatXlm(entry.estimatedPayout)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <section className="space-y-3 rounded-lg border border-border bg-surface p-4">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-secondary">Profile Badges</h3>
-                <p className="text-xs text-muted">Badge assignment is computed client-side in this UI pass.</p>
+              {/* Profile Badges */}
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-6">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-muted)] mb-4">Profile Badges</h3>
                 {profileBadges.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {profileBadges.map((badge) => (
@@ -377,185 +418,84 @@ function DashboardPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted">Complete campaigns and increase your score to unlock badges.</p>
+                  <p className="text-sm text-[var(--color-muted)]">Complete campaigns to unlock badges.</p>
                 )}
-              </section>
+              </div>
 
-              {loadingEarnings ? (
-                <div className="space-y-2 rounded-lg border border-border bg-surface p-4">
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ) : null}
-
-              {earningsError ? <p className="text-sm text-danger">{earningsError}</p> : null}
-
-              {!loadingEarnings && !earningsError && earnings.length === 0 ? (
-                <p className="text-sm text-muted">
-                  No verified earnings yet. Once your posts are verified, payout projections will appear here.
-                </p>
-              ) : null}
-
-              {!loadingEarnings && !earningsError && earnings.length > 0 ? (
-                <div className="overflow-hidden rounded-lg border border-border bg-surface">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-border text-left text-sm">
-                      <thead className="bg-background text-xs uppercase tracking-[0.16em] text-muted">
-                        <tr>
-                          <th className="px-4 py-3 font-semibold">Campaign</th>
-                          <th className="px-4 py-3 font-semibold">Posts</th>
-                          <th className="px-4 py-3 font-semibold">Current Score</th>
-                          <th className="px-4 py-3 font-semibold">Estimated Payout (XLM)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {earnings.map((entry) => (
-                          <tr key={entry.campaignId} className="align-top">
-                            <td className="px-4 py-4">
-                              <div className="space-y-1">
-                                <p className="font-semibold text-secondary">{entry.campaignTitle}</p>
-                                <p className="text-xs text-muted">Updated {formatTimestamp(entry.lastUpdatedAt)}</p>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4 font-medium text-secondary">{entry.posts}</td>
-                            <td className="px-4 py-4 font-medium text-secondary">{entry.currentScore.toFixed(2)}</td>
-                            <td className="px-4 py-4 font-semibold text-success">{formatXlm(entry.estimatedPayout)} XLM</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="space-y-4 rounded-lg border border-border bg-surface p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-secondary">Payout History</h3>
-                  <span className="text-xs text-muted">Links open on Stellar testnet explorer</span>
+              {/* Payout History */}
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-muted)]">Payout History</h3>
                 </div>
 
-                {!effectiveWalletAddress ? (
-                  <div className="space-y-2 rounded-md border border-border bg-background p-3">
-                    <p className="text-sm text-muted">Connect your Freighter wallet to receive XLM payouts.</p>
-                    <ConnectWalletButton />
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-background p-3">
-                    <p className="text-sm text-muted">
-                      Wallet:{" "}
-                      <span className="font-semibold text-secondary">
+                <div className="mb-6 rounded-xl border border-[var(--color-border)] bg-[#0D0F14] p-4">
+                  {!effectiveWalletAddress ? (
+                    <div className="text-center">
+                      <p className="text-xs text-[var(--color-muted)] mb-3">Connect wallet to receive payouts</p>
+                      <ConnectWalletButton />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 text-center">
+                      <p className="text-xs text-[var(--color-muted)]">Connected Wallet</p>
+                      <p className="text-sm font-mono text-[var(--color-primary)]">
                         {effectiveWalletAddress.slice(0, 6)}...{effectiveWalletAddress.slice(-6)}
-                      </span>
-                    </p>
-                    <ConnectWalletButton />
-                  </div>
-                )}
+                      </p>
+                      <div className="mt-2 mx-auto">
+                        <ConnectWalletButton />
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {loadingPayoutHistory ? (
                   <div className="space-y-2">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-14 w-full rounded-lg bg-[#2A2D3A]" />
+                    <Skeleton className="h-14 w-full rounded-lg bg-[#2A2D3A]" />
                   </div>
-                ) : null}
-
-                {payoutError ? <p className="text-sm text-danger">{payoutError}</p> : null}
-
-                {!loadingPayoutHistory && payoutHistory && payoutHistory.payouts.length === 0 ? (
-                  <EmptyState
-                    variant="payouts"
-                    title="No payouts"
-                    description="Payout history will show here once campaign distributions begin."
-                  />
-                ) : null}
-
-                {!loadingPayoutHistory && payoutHistory && payoutHistory.payouts.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-border text-left text-sm">
-                      <thead className="bg-background text-xs uppercase tracking-[0.14em] text-muted">
-                        <tr>
-                          <th className="px-3 py-2 font-semibold">Campaign</th>
-                          <th className="px-3 py-2 font-semibold">Amount</th>
-                          <th className="px-3 py-2 font-semibold">Status</th>
-                          <th className="px-3 py-2 font-semibold">Tx</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {payoutHistory.payouts.map((payout) => (
-                          <tr key={payout.id}>
-                            <td className="px-3 py-3">
-                              <p className="font-semibold text-secondary">{payout.campaignTitle}</p>
-                            </td>
-                            <td className="px-3 py-3 font-medium text-secondary">{formatXlm(payout.amount)} XLM</td>
-                            <td className="px-3 py-3">
-                              <span
-                                className="rounded-full border px-2 py-1 text-xs font-semibold"
-                                style={{
-                                  color:
-                                    payout.status === "COMPLETED"
-                                      ? "var(--color-success)"
-                                      : payout.status === "FAILED"
-                                        ? "var(--color-danger)"
-                                        : "var(--color-accent)",
-                                  borderColor:
-                                    payout.status === "COMPLETED"
-                                      ? "color-mix(in srgb, var(--color-success) 42%, var(--color-border))"
-                                      : payout.status === "FAILED"
-                                        ? "color-mix(in srgb, var(--color-danger) 38%, var(--color-border))"
-                                        : "color-mix(in srgb, var(--color-accent) 42%, var(--color-border))",
-                                  backgroundColor:
-                                    payout.status === "COMPLETED"
-                                      ? "color-mix(in srgb, var(--color-success) 16%, var(--color-surface))"
-                                      : payout.status === "FAILED"
-                                        ? "color-mix(in srgb, var(--color-danger) 14%, var(--color-surface))"
-                                        : "color-mix(in srgb, var(--color-accent) 18%, var(--color-surface))"
-                                }}
-                              >
-                                {payout.status}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3">
-                              {payout.stellarTxUrl ? (
-                                <a
-                                  href={payout.stellarTxUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-xs font-semibold text-secondary underline"
-                                >
-                                  {payout.stellarTxHash}
-                                </a>
-                              ) : payout.status === "PENDING" ? (
-                                <button
-                                  type="button"
-                                  onClick={() => claimPendingPayout(payout.campaignId, payout.id)}
-                                  disabled={
-                                    claimingPayoutId === payout.id ||
-                                    !effectiveWalletAddress ||
-                                    effectiveWalletAddress.length === 0
-                                  }
-                                  className="rounded-md border border-border px-2 py-1 text-xs font-semibold text-secondary disabled:opacity-60"
-                                  style={{
-                                    background:
-                                      "linear-gradient(120deg, color-mix(in srgb, var(--color-secondary) 16%, white), var(--color-surface))"
-                                  }}
-                                >
-                                  {claimingPayoutId === payout.id ? "Claiming..." : "Claim"}
-                                </button>
-                              ) : (
-                                <span className="text-xs text-muted">Not available</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                ) : payoutError ? (
+                  <p className="text-sm text-[var(--color-danger)]">{payoutError}</p>
+                ) : !payoutHistory || payoutHistory.payouts.length === 0 ? (
+                  <p className="text-sm text-[var(--color-muted)] text-center">No payouts yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {payoutHistory.payouts.slice(0, 5).map((payout) => (
+                      <div key={payout.id} className="flex justify-between items-center rounded-lg border border-[var(--color-border)] bg-[#0D0F14] p-3">
+                        <div className="truncate pr-2">
+                          <p className="text-xs font-semibold text-white truncate">{payout.campaignTitle}</p>
+                          <p className="text-xs font-mono text-[var(--color-secondary)]">{formatXlm(payout.amount)} XLM</p>
+                        </div>
+                        
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${payout.status === 'COMPLETED' ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : payout.status === 'FAILED' ? 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]' : 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'}`}>
+                            {payout.status}
+                          </span>
+                          
+                          {payout.status === "PENDING" && (
+                            <button
+                              type="button"
+                              onClick={() => claimPendingPayout(payout.campaignId, payout.id)}
+                              disabled={claimingPayoutId === payout.id || !effectiveWalletAddress}
+                              className="text-[10px] bg-[var(--color-primary)] text-white px-2 py-0.5 rounded hover:bg-opacity-80 disabled:opacity-50"
+                            >
+                              {claimingPayoutId === payout.id ? "..." : "Claim"}
+                            </button>
+                          )}
+                          
+                          {payout.stellarTxUrl && (
+                            <a href={payout.stellarTxUrl} target="_blank" rel="noreferrer" className="text-[10px] text-[var(--color-primary)] hover:underline">
+                              Tx ↗
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ) : null}
+                )}
               </div>
-            </section>
-          </aside>
-        ) : null}
+            </aside>
+          ) : null}
+          
+        </div>
       </section>
     </main>
   );

@@ -6,18 +6,21 @@ const statusLabelMap: Record<CampaignStatus, string> = {
   ENDED: "Ended"
 };
 
-const statusStyleMap: Record<CampaignStatus, { text: string; background: string }> = {
+const statusStyleMap: Record<CampaignStatus, { text: string; background: string; glow: string }> = {
   ACTIVE: {
-    text: "var(--color-success)",
-    background: "color-mix(in srgb, var(--color-success) 16%, var(--color-surface))"
+    text: "text-[var(--color-success)]",
+    background: "bg-[var(--color-success)]/10",
+    glow: "shadow-[0_0_12px_-2px_rgba(16,185,129,0.4)]"
   },
   PAUSED: {
-    text: "var(--color-accent)",
-    background: "color-mix(in srgb, var(--color-accent) 20%, var(--color-surface))"
+    text: "text-[#F59E0B]", // amber
+    background: "bg-[#F59E0B]/10",
+    glow: "shadow-[0_0_12px_-2px_rgba(245,158,11,0.4)]"
   },
   ENDED: {
-    text: "var(--color-muted)",
-    background: "color-mix(in srgb, var(--color-muted) 20%, var(--color-surface))"
+    text: "text-[var(--color-muted)]",
+    background: "bg-[var(--color-surface)]/80",
+    glow: ""
   }
 };
 
@@ -26,9 +29,9 @@ export function StatusBadge({ status }: { status: CampaignStatus }) {
 
   return (
     <span
-      className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]"
-      style={{ color: styles.text, backgroundColor: styles.background }}
+      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest ${styles.text} ${styles.background} ${styles.glow} backdrop-blur-sm`}
     >
+      {status === "ACTIVE" && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-[var(--color-success)] animate-pulse"></span>}
       {statusLabelMap[status]}
     </span>
   );

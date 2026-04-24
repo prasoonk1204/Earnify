@@ -43,18 +43,6 @@
   --breakpoint-xl: var(--token-breakpoint-xl);
 }
 
-html.dark {
-  --color-primary: #34d399;
-  --color-secondary: #93c5fd;
-  --color-accent: #fbbf24;
-  --color-danger: #f87171;
-  --color-success: #4ade80;
-  --color-muted: #94a3b8;
-  --color-background: #020617;
-  --color-surface: #0f172a;
-  --color-border: #334155;
-}
-
 @layer base {
   * {
     border-color: var(--color-border);
@@ -62,17 +50,15 @@ html.dark {
 
   html {
     background: var(--color-background);
-    color: var(--color-muted);
+    color: #e2e8f0; /* Default text color for dark mode */
     font-family: var(--font-sans);
   }
 
   body {
     margin: 0;
     min-height: 100vh;
-    background:
-      radial-gradient(circle at top left, var(--color-accent), transparent 30%),
-      linear-gradient(180deg, var(--color-background), var(--color-surface));
-    color: var(--color-muted);
+    background: var(--color-background);
+    color: #e2e8f0;
   }
 
   a {

@@ -16,21 +16,17 @@ export function BudgetBar({ totalBudget, remainingBudget, size = "md" }: BudgetB
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-secondary">{remainingBudget.toFixed(2)} XLM left</span>
-        <span className="text-muted">{totalBudget.toFixed(2)} XLM total</span>
+        <span className="font-semibold text-white">{remainingBudget.toFixed(2)} XLM left</span>
+        <span className="font-medium text-[var(--color-muted)]">{totalBudget.toFixed(2)} XLM total</span>
       </div>
 
       <div
-        className="overflow-hidden rounded-full border border-border"
-        style={{ height: barHeight, backgroundColor: "color-mix(in srgb, var(--color-muted) 14%, transparent)" }}
+        className="overflow-hidden rounded-full border border-[var(--color-border)]/30 bg-[#0D0F14]/50 backdrop-blur-sm"
+        style={{ height: barHeight }}
       >
         <div
-          className="h-full rounded-full"
-          style={{
-            width: `${spentPercent}%`,
-            background:
-              "linear-gradient(90deg, var(--color-secondary), color-mix(in srgb, var(--color-primary) 75%, var(--color-secondary)))"
-          }}
+          className="h-full rounded-full bg-gradient-to-r from-[#10B981] to-[#6366F1] shadow-[0_0_10px_-2px_rgba(99,102,241,0.5)]"
+          style={{ width: `${spentPercent}%` }}
         />
       </div>
     </div>

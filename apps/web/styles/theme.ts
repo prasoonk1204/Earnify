@@ -1,14 +1,14 @@
 export const theme = {
   colors: {
-    primary: "#0f766e",
-    secondary: "#1d4ed8",
-    accent: "#f59e0b",
-    danger: "#dc2626",
-    success: "#16a34a",
-    muted: "#64748b",
-    background: "#f8fafc",
-    surface: "#ffffff",
-    border: "#dbe4ee"
+    primary: "#6366F1", // Electric Indigo
+    secondary: "#10B981", // Emerald Green
+    accent: "#8B5CF6", // Purple accent
+    danger: "#EF4444",
+    success: "#10B981",
+    muted: "#9CA3AF",
+    background: "#0D0F14", // Deep navy/charcoal base
+    surface: "#1A1D27", // Slightly lighter for cards
+    border: "#2A2D3A" // Subtle borders
   },
   typography: {
     fonts: {

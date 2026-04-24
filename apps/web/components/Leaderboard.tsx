@@ -42,25 +42,21 @@ function getMovementFromRanks(previousRank: number | undefined, currentRank: num
 function getPodiumRowStyle(rank: number) {
   if (rank === 1) {
     return {
-      backgroundColor: "color-mix(in srgb, var(--color-accent) 16%, var(--color-surface))",
-      borderColor: "color-mix(in srgb, var(--color-accent) 38%, var(--color-border))"
+      className: "bg-gradient-to-r from-[#F59E0B]/20 to-[#0D0F14]/50 border-l-4 border-l-[#F59E0B] border-y border-y-[var(--color-border)]/30 border-r border-r-[var(--color-border)]/30 shadow-[0_0_15px_-5px_rgba(245,158,11,0.3)] backdrop-blur-md"
     };
   }
   if (rank === 2) {
     return {
-      backgroundColor: "color-mix(in srgb, var(--color-muted) 12%, var(--color-surface))",
-      borderColor: "color-mix(in srgb, var(--color-muted) 30%, var(--color-border))"
+      className: "bg-gradient-to-r from-[#94A3B8]/20 to-[#0D0F14]/50 border-l-4 border-l-[#94A3B8] border-y border-y-[var(--color-border)]/30 border-r border-r-[var(--color-border)]/30 backdrop-blur-md"
     };
   }
   if (rank === 3) {
     return {
-      backgroundColor: "color-mix(in srgb, var(--color-primary) 12%, var(--color-surface))",
-      borderColor: "color-mix(in srgb, var(--color-primary) 30%, var(--color-border))"
+      className: "bg-gradient-to-r from-[#6366F1]/20 to-[#0D0F14]/50 border-l-4 border-l-[#6366F1] border-y border-y-[var(--color-border)]/30 border-r border-r-[var(--color-border)]/30 backdrop-blur-md"
     };
   }
   return {
-    backgroundColor: "color-mix(in srgb, var(--color-background) 55%, var(--color-surface))",
-    borderColor: "var(--color-border)"
+    className: "bg-[#0D0F14]/40 border border-[var(--color-border)]/30 backdrop-blur-sm"
   };
 }
 
@@ -103,8 +99,7 @@ function PlatformBadge({ platform }: { platform: SocialPlatform }) {
     <span
       aria-label={fullNames[platform]}
       title={fullNames[platform]}
-      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border text-[10px] font-bold"
-      style={{ backgroundColor: "color-mix(in srgb, var(--color-secondary) 10%, var(--color-surface))" }}
+      className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-surface)]/50 border border-[var(--color-border)]/30 text-[10px] font-bold text-white shadow-sm"
     >
       {labels[platform]}
     </span>
@@ -238,7 +233,7 @@ export function Leaderboard({ campaignId, initialEntries = [], onConnectionChang
     return (
       <ul className="space-y-3">
         {Array.from({ length: 5 }).map((_, index) => (
-          <li key={`leaderboard-skeleton-${index}`} className="rounded-md border border-border p-3 sm:p-4">
+          <li key={`leaderboard-skeleton-${index}`} className="rounded-xl border border-[var(--color-border)]/30 bg-[#0D0F14]/50 p-3 sm:p-4 backdrop-blur-sm">
             <div className="grid grid-cols-[auto,1fr,auto] items-center gap-3 sm:grid-cols-[auto,1.4fr,0.8fr,auto] sm:gap-4">
               <Skeleton className="h-6 w-8" />
               <div className="flex items-center gap-3">
@@ -293,11 +288,12 @@ export function Leaderboard({ campaignId, initialEntries = [], onConnectionChang
                 ? "var(--color-danger)"
                 : "var(--color-muted)";
 
+          const podiumStyle = getPodiumRowStyle(entry.rank);
+
           return (
             <li
               key={entry.userId}
-              className={`grid grid-cols-[auto,1fr,auto,auto] items-center gap-3 rounded-md border p-3 transition-transform duration-300 ease-out sm:grid-cols-[auto,1.4fr,0.8fr,auto,auto] sm:gap-4 sm:p-4 ${transformClass}`}
-              style={getPodiumRowStyle(entry.rank)}
+              className={`grid grid-cols-[auto,1fr,auto,auto] items-center gap-3 rounded-xl p-3 transition-transform duration-300 ease-out sm:grid-cols-[auto,1.4fr,0.8fr,auto,auto] sm:gap-4 sm:p-4 ${transformClass} ${podiumStyle.className}`}
             >
               {/* Rank */}
               <div className="flex items-center gap-2">
@@ -310,12 +306,12 @@ export function Leaderboard({ campaignId, initialEntries = [], onConnectionChang
                   <img
                     src={entry.userAvatar ?? "https://placehold.co/64x64/e2e8f0/334155?text=U"}
                     alt={`${entry.userName} avatar`}
-                    className="h-9 w-9 rounded-full border border-border object-cover sm:h-10 sm:w-10"
+                    className="h-9 w-9 rounded-full border border-[var(--color-border)]/30 object-cover sm:h-10 sm:w-10 shadow-sm"
                   />
 
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-secondary sm:text-base">{entry.userName}</p>
+                      <p className="truncate text-sm font-bold text-white sm:text-base">{entry.userName}</p>
                       {resolveBadges({
                         rank: entry.rank,
                         verifiedPostCount: entry.postCount,
@@ -340,10 +336,10 @@ export function Leaderboard({ campaignId, initialEntries = [], onConnectionChang
 
               {/* Score + earnings */}
               <div className="justify-self-end text-right">
-                <p className="text-sm font-semibold text-secondary sm:text-base">{formatScore(entry.score)}</p>
-                <p className="text-xs text-muted">pts</p>
+                <p className="text-sm font-bold text-[var(--color-primary)] sm:text-base">{formatScore(entry.score)}</p>
+                <p className="text-xs text-[var(--color-muted)]">pts</p>
                 {entry.estimatedEarnings > 0 && (
-                  <p className="mt-0.5 text-xs font-medium" style={{ color: "var(--color-success)" }}>
+                  <p className="mt-0.5 text-xs font-bold text-[var(--color-success)]">
                     ~{formatEarnings(entry.estimatedEarnings)}
                   </p>
                 )}
