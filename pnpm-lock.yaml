@@ -112,6 +112,9 @@ importers:
       '@earnify/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@stellar/freighter-api':
+        specifier: ^3.1.0
+        version: 3.1.0
       next:
         specifier: ^16.2.4
         version: 16.2.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -686,6 +689,9 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@stellar/freighter-api@3.1.0':
+    resolution: {integrity: sha512-hsoZwAR/jNVIt8ee6aHYcRKVk09hDLHmsfK2nUfqHUo7LuHtuHI59y/mDyrT4bp/qlklGZNd2nr0hRJyjau8WQ==}
 
   '@stellar/js-xdr@3.1.2':
     resolution: {integrity: sha512-VVolPL5goVEIsvuGqDc5uiKxV03lzfWdvYg1KikvwheDmTBO68CKDji3bAZ/kppZrx5iTA8z3Ld5yuytcvhvOQ==}
@@ -2747,6 +2753,11 @@ snapshots:
   '@socket.io/component-emitter@3.1.2': {}
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@stellar/freighter-api@3.1.0':
+    dependencies:
+      buffer: 6.0.3
+      semver: 7.7.4
 
   '@stellar/js-xdr@3.1.2': {}
 

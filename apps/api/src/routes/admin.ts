@@ -14,7 +14,12 @@ adminRouter.post("/trigger-engagement-refresh", requireAuth, requireRole("FOUNDE
       response,
       {
         message: summary.skipped ? "Engagement refresh is already running" : "Engagement refresh completed",
-        ...summary
+        skipped: summary.skipped,
+        processedCampaigns: summary.processedCampaigns,
+        failedCampaigns: summary.failedCampaigns,
+        totalCampaigns: summary.totalCampaigns,
+        startedAt: summary.startedAt,
+        finishedAt: summary.finishedAt
       },
       summary.skipped ? 202 : 200
     );

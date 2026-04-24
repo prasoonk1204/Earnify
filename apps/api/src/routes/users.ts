@@ -137,6 +137,30 @@ usersRouter.patch("/:id/wallet", requireAuth, async (request, response) => {
   sendSuccess(response, updatedUser);
 });
 
+// PATCH /api/users/me/wallet — convenience endpoint for the authenticated user
+// (used by WalletProvider after Freighter connection)
+usersRouter.patch("/me/wallet", requireAuth, async (request, response) => {
+  if (!request.user) {
+    sendError(response, "Unauthorized", 401);
+    return;
+  }
+
+  const walletAddress = (request.body as { walletAddress?: string }).walletAddress?.trim();
+
+  if (!walletAddress || !isValidStellarPublicKey(walletAddress)) {
+    sendError(response, "walletAddress must be a valid Stellar public key", 400);
+    return;
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: request.user.id },
+    data: { walletAddress },
+    select: { id: true, walletAddress: true }
+  });
+
+  sendSuccess(response, updatedUser);
+});
+
 usersRouter.post("/:id/payouts/:campaignId/claim", requireAuth, async (request, response) => {
   const userId = parseIdParam(request.params.id);
   const campaignId = parseIdParam(request.params.campaignId);
