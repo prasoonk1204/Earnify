@@ -178,6 +178,7 @@ async function executeCampaignPayouts(campaignId: string, options: ExecutePayout
     },
     select: {
       id: true,
+      founderId: true,
       status: true,
       remainingBudget: true,
       stellarWalletSecretKeyEncrypted: true
@@ -197,7 +198,7 @@ async function executeCampaignPayouts(campaignId: string, options: ExecutePayout
   }
 
   const campaignBudget = toNumber(campaign.remainingBudget);
-  const scoreEntries = await getCampaignScoreEntries(campaign.id);
+  const scoreEntries = (await getCampaignScoreEntries(campaign.id)).filter((entry) => entry.userId !== campaign.founderId);
   const allocated = allocatePayouts(scoreEntries, campaignBudget).filter((entry) => entry.amount > 0);
 
   const sourceSecretKey = decryptSecretKey(campaign.stellarWalletSecretKeyEncrypted);

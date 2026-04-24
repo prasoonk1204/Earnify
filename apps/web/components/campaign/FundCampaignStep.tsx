@@ -111,9 +111,10 @@ type Props = {
   campaign: CampaignDraft;
   onSuccess: (result: { contractId: string; txHash: string }) => void;
   onSkip: () => void;
+  allowSkip?: boolean;
 };
 
-export function FundCampaignStep({ campaign, onSuccess, onSkip }: Props) {
+export function FundCampaignStep({ campaign, onSuccess, onSkip, allowSkip = true }: Props) {
   const { walletAddress, isConnected, isFreighterInstalled, connectWallet } = useWallet();
 
   const [phase, setPhase] = useState<FundingPhase>("idle");
@@ -370,7 +371,7 @@ export function FundCampaignStep({ campaign, onSuccess, onSkip }: Props) {
             )}
           </button>
 
-          {!isLoading && (
+          {!isLoading && allowSkip ? (
             <button
               type="button"
               onClick={onSkip}
@@ -378,7 +379,7 @@ export function FundCampaignStep({ campaign, onSuccess, onSkip }: Props) {
             >
               Skip for now
             </button>
-          )}
+          ) : null}
         </div>
       )}
     </div>

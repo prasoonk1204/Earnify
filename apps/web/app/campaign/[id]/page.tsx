@@ -5,7 +5,7 @@ import type { FormEvent } from "react";
 
 import type { ApiResponse, CampaignStatus, LeaderboardEntry, PostStatus, SocialPlatform } from "@earnify/shared";
 import { useParams } from "next/navigation";
-
+import { FundCampaignStep } from "../../../components/campaign/FundCampaignStep";
 import { BudgetBar } from "../../../components/BudgetBar";
 import { EmptyState } from "../../../components/EmptyState";
 import { ErrorBoundary } from "../../../components/ErrorBoundary";
@@ -223,6 +223,7 @@ function CampaignDetailsPage() {
   }, [campaign?.stats.topScorer]);
 
   const isFounderView = user?.role === "FOUNDER" && campaign?.founderId === user.id;
+  const canSubmitPost = !isFounderView;
 
   useEffect(() => {
     if (!campaignId || !isFounderView) {
@@ -601,18 +602,22 @@ function CampaignDetailsPage() {
               <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                 <div>
                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <span className="text-[var(--color-primary)]">✦</span> Founder Payout Console
+                    <span className="text-[var(--color-primary)]">✦</span> {campaign.contractId ? "Founder Payout Console" : "Campaign Deployment Console"}
                   </h2>
-                  <p className="text-sm text-[var(--color-muted)] mt-1">Distribute campaign budget on Stellar testnet and monitor transaction flow.</p>
+                  <p className="text-sm text-[var(--color-muted)] mt-1">
+                    {campaign.contractId 
+                      ? "Distribute campaign budget on Stellar testnet and monitor transaction flow."
+                      : "Your campaign is currently a draft. Deploy the Soroban contract and fund it to go live."}
+                  </p>
                 </div>
-                {campaign.status === "ACTIVE" ? (
+                {campaign.status === "ACTIVE" && campaign.contractId ? (
                   <button
                     type="button"
                     onClick={() => setShowPayoutConfirm(true)}
                     disabled={triggeringPayout || payoutStreaming}
                     className="rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] px-6 py-2.5 text-sm font-semibold text-white shadow-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
                   >
-                    {triggeringPayout || payoutStreaming ? "Streaming..." : "Trigger Payout"}
+                    {triggeringPayout || payoutStreaming ? "Processing..." : "End Campaign & Distribute"}
                   </button>
                 ) : null}
               </div>
@@ -635,7 +640,7 @@ function CampaignDetailsPage() {
               {showPayoutConfirm ? (
                 <div className="rounded-xl border border-[var(--color-primary)]/50 bg-[var(--color-surface)] p-6 mb-8">
                   <p className="text-sm text-white mb-4">
-                    This will distribute <span className="font-bold text-[var(--color-secondary)]">{campaign.remainingBudget.toFixed(2)} XLM</span> to <span className="font-bold">{leaderboard.length}</span> creators.
+                    This will end the campaign now (even before the scheduled end date) and distribute <span className="font-bold text-[var(--color-secondary)]">{campaign.remainingBudget.toFixed(2)} XLM</span> to participants with connected wallets.
                   </p>
                   <div className="flex gap-4">
                     <button
@@ -644,7 +649,7 @@ function CampaignDetailsPage() {
                       disabled={triggeringPayout}
                       className="rounded-full bg-[var(--color-primary)] px-6 py-2 text-sm font-semibold text-white hover:bg-opacity-90 transition-all"
                     >
-                      Confirm Payout
+                      Confirm End & Distribute
                     </button>
                     <button
                       type="button"
@@ -657,52 +662,71 @@ function CampaignDetailsPage() {
                 </div>
               ) : null}
 
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-muted)] mb-4">Live Transaction Feed</h3>
-                {payoutLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-16 w-full rounded-xl bg-[var(--color-surface)]" />
-                    <Skeleton className="h-16 w-full rounded-xl bg-[var(--color-surface)]" />
-                  </div>
-                ) : payouts.length === 0 ? (
-                  <EmptyState
-                    variant="payouts"
-                    title="No payouts yet"
-                    description="Transactions will appear here once distribution begins."
+              {campaign.contractId ? (
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-muted)] mb-4">Live Transaction Feed</h3>
+                  {payoutLoading ? (
+                    <div className="space-y-3">
+                      <Skeleton className="h-16 w-full rounded-xl bg-[var(--color-surface)]" />
+                      <Skeleton className="h-16 w-full rounded-xl bg-[var(--color-surface)]" />
+                    </div>
+                  ) : payouts.length === 0 ? (
+                    <EmptyState
+                      variant="payouts"
+                      title="No payouts yet"
+                      description="Transactions will appear here once distribution begins."
+                    />
+                  ) : (
+                    <ul className="space-y-3">
+                      {payouts.map((payout) => (
+                        <li
+                          key={payout.id}
+                          className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-4"
+                        >
+                          <div>
+                            <p className="font-semibold text-white">{payout.userName}</p>
+                            <p className="text-sm text-[var(--color-secondary)] font-mono">{payout.amount.toFixed(2)} XLM</p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="rounded-full bg-[var(--color-background)] px-3 py-1 text-xs font-semibold uppercase tracking-wider" style={getPayoutStatusStyle(payout.status)}>
+                              {payout.status}
+                            </span>
+                            {payout.stellarTxUrl ? (
+                              <a
+                                href={payout.stellarTxUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs font-medium text-[var(--color-primary)] hover:underline"
+                              >
+                                View Tx ↗
+                              </a>
+                            ) : (
+                              <span className="text-xs text-[var(--color-muted)]">Pending...</span>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-[var(--color-primary)]/20 bg-[var(--color-primary)]/5 p-8">
+                  <FundCampaignStep 
+                    campaign={{
+                      id: campaign.id,
+                      title: campaign.title,
+                      budget: campaign.budget ?? "0",
+                      budgetToken: campaign.budgetToken ?? "XLM",
+                      founderWalletAddress: campaign.founderId
+                    }} 
+                    onSuccess={() => {
+                      // Reload campaign data to show active state
+                      window.location.reload();
+                    }}
+                    onSkip={() => {}}
                   />
-                ) : (
-                  <ul className="space-y-3">
-                    {payouts.map((payout) => (
-                      <li
-                        key={payout.id}
-                        className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-4"
-                      >
-                        <div>
-                          <p className="font-semibold text-white">{payout.userName}</p>
-                          <p className="text-sm text-[var(--color-secondary)] font-mono">{payout.amount.toFixed(2)} XLM</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="rounded-full bg-[var(--color-background)] px-3 py-1 text-xs font-semibold uppercase tracking-wider" style={getPayoutStatusStyle(payout.status)}>
-                            {payout.status}
-                          </span>
-                          {payout.stellarTxUrl ? (
-                            <a
-                              href={payout.stellarTxUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs font-medium text-[var(--color-primary)] hover:underline"
-                            >
-                              View Tx ↗
-                            </a>
-                          ) : (
-                            <span className="text-xs text-[var(--color-muted)]">Pending...</span>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+                </div>
+              )}
             </section>
           ) : null}
 
@@ -714,12 +738,14 @@ function CampaignDetailsPage() {
             >
               Leaderboard
             </button>
-            <button
-              onClick={() => setActiveTab("submit")}
-              className={`pb-4 px-2 text-sm font-semibold transition-colors border-b-2 ${activeTab === "submit" ? "border-[var(--color-primary)] text-[var(--color-primary)]" : "border-transparent text-[var(--color-muted)] hover:text-white"}`}
-            >
-              Submit Post
-            </button>
+            {canSubmitPost ? (
+              <button
+                onClick={() => setActiveTab("submit")}
+                className={`pb-4 px-2 text-sm font-semibold transition-colors border-b-2 ${activeTab === "submit" ? "border-[var(--color-primary)] text-[var(--color-primary)]" : "border-transparent text-[var(--color-muted)] hover:text-white"}`}
+              >
+                Submit Post
+              </button>
+            ) : null}
           </div>
 
           {activeTab === "leaderboard" ? (

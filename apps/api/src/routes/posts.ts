@@ -3,7 +3,7 @@ import { Router } from "express";
 import { CampaignStatus, PostStatus, prisma } from "@earnify/db";
 import type { SocialPlatform } from "@earnify/shared";
 
-import { requireAuth, requireRole } from "../../middleware/auth.ts";
+import { requireAuth } from "../../middleware/auth.ts";
 import { runVerificationPipeline } from "../services/verificationEngine.ts";
 import { sendError, sendSuccess } from "../utils/api-response.ts";
 
@@ -25,7 +25,7 @@ function parseIdParam(value: string | string[] | undefined): string | null {
   return null;
 }
 
-postsRouter.post("/", requireAuth, requireRole("USER"), async (request, response) => {
+postsRouter.post("/", requireAuth, async (request, response) => {
   const { campaignId, postUrl, platform } = request.body as {
     campaignId?: string;
     postUrl?: string;
@@ -54,7 +54,8 @@ postsRouter.post("/", requireAuth, requireRole("USER"), async (request, response
     },
     select: {
       id: true,
-      status: true
+      status: true,
+      founderId: true
     }
   });
 
@@ -65,6 +66,11 @@ postsRouter.post("/", requireAuth, requireRole("USER"), async (request, response
 
   if (campaign.status !== CampaignStatus.ACTIVE) {
     sendError(response, "Campaign is not active", 400);
+    return;
+  }
+
+  if (campaign.founderId === request.user.id) {
+    sendError(response, "Founders cannot participate in their own campaigns", 403);
     return;
   }
 

@@ -1,12 +1,19 @@
 import type { CampaignStatus } from "@earnify/shared";
 
 const statusLabelMap: Record<CampaignStatus, string> = {
+  DRAFT: "Draft",
   ACTIVE: "Active",
   PAUSED: "Paused",
+  COMPLETED: "Completed",
   ENDED: "Ended"
 };
 
 const statusStyleMap: Record<CampaignStatus, { text: string; background: string; glow: string }> = {
+  DRAFT: {
+    text: "text-[var(--color-accent)]",
+    background: "bg-[var(--color-accent)]/10",
+    glow: "shadow-[0_0_12px_-2px_rgba(6,182,212,0.35)]"
+  },
   ACTIVE: {
     text: "text-[var(--color-success)]",
     background: "bg-[var(--color-success)]/10",
@@ -16,6 +23,11 @@ const statusStyleMap: Record<CampaignStatus, { text: string; background: string;
     text: "text-[#F59E0B]", // amber
     background: "bg-[#F59E0B]/10",
     glow: "shadow-[0_0_12px_-2px_rgba(245,158,11,0.4)]"
+  },
+  COMPLETED: {
+    text: "text-[var(--color-secondary)]",
+    background: "bg-[var(--color-secondary)]/10",
+    glow: "shadow-[0_0_12px_-2px_rgba(16,185,129,0.35)]"
   },
   ENDED: {
     text: "text-[var(--color-muted)]",

@@ -626,7 +626,7 @@ function CreateCampaignPage() {
               <p className="text-sm font-semibold uppercase tracking-widest text-[var(--color-primary)]">Founder Console</p>
               <h1 className="text-3xl font-bold text-white sm:text-4xl">Launch a Campaign</h1>
               <p className="text-base text-[var(--color-muted)] max-w-2xl">
-                Design your marketing bounty. Your campaign will be saved as a draft initially — you'll fund it securely via Freighter in the final step.
+                Design your marketing bounty. Campaign launch now requires funding via Freighter in the final step.
               </p>
             </header>
 
@@ -654,6 +654,7 @@ function CreateCampaignPage() {
                   onSuccess={(result) => {
                     setFundingResult(result);
                   }}
+                  allowSkip={false}
                   onSkip={() => {
                     // Let them view the draft campaign without funding
                     window.location.href = `/campaign/${createdCampaign.id}`;

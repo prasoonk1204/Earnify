@@ -1,5 +1,8 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 import * as StellarSdk from "@stellar/stellar-sdk";
 
@@ -16,9 +19,67 @@ const sorobanRpcUrl = process.env.STELLAR_SOROBAN_RPC_URL ?? "https://soroban-te
 const networkPassphrase =
   process.env.STELLAR_NETWORK_PASSPHRASE ?? StellarSdk.Networks.TESTNET;
 const adminSecret = process.env.STELLAR_ADMIN_SECRET;
-const contractWasmPath =
+const configuredWasmPath =
   process.env.SOROBAN_WASM_PATH ??
-  "contracts/earnify-campaign/target/wasm32-unknown-unknown/release/earnify_campaign.optimized.wasm";
+  "contracts/earnify-campaign/target/wasm32v1-none/release/earnify_campaign.optimized.wasm";
+
+const serviceDir = dirname(fileURLToPath(import.meta.url));
+const repoRootDir = resolve(serviceDir, "../../../../");
+const contractDir = join(repoRootDir, "contracts/earnify-campaign");
+
+function normalizeCandidatePath(pathValue: string) {
+  if (isAbsolute(pathValue)) {
+    return pathValue;
+  }
+
+  const fromCwd = resolve(process.cwd(), pathValue);
+  if (existsSync(fromCwd)) {
+    return fromCwd;
+  }
+
+  return resolve(repoRootDir, pathValue);
+}
+
+function getWasmCandidates() {
+  const normalizedConfiguredPath = normalizeCandidatePath(configuredWasmPath);
+  const filename = configuredWasmPath.split("/").pop() ?? "earnify_campaign.optimized.wasm";
+
+  return [
+    normalizedConfiguredPath,
+    join(contractDir, "target/wasm32v1-none/release/earnify_campaign.optimized.wasm"),
+    join(contractDir, "target/wasm32v1-none/release/earnify_campaign.wasm"),
+    join(contractDir, "target/wasm32-unknown-unknown/release/earnify_campaign.optimized.wasm"),
+    join(contractDir, "target/wasm32-unknown-unknown/release/earnify_campaign.wasm"),
+    // Last resort: keep original filename under canonical v1 target dir
+    join(contractDir, "target/wasm32v1-none/release", filename)
+  ];
+}
+
+async function ensureContractWasmPath() {
+  for (const candidate of getWasmCandidates()) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  // Build + optimize contract if artifact is missing.
+  await execFileAsync("stellar", ["contract", "build"], { cwd: contractDir });
+
+  const builtWasm = join(contractDir, "target/wasm32v1-none/release/earnify_campaign.wasm");
+  if (existsSync(builtWasm)) {
+    await execFileAsync("stellar", ["contract", "optimize", "--wasm", builtWasm], { cwd: repoRootDir });
+  }
+
+  for (const candidate of getWasmCandidates()) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    "Soroban contract WASM not found after build. Set SOROBAN_WASM_PATH or run stellar contract build/optimize."
+  );
+}
 
 const sdk = StellarSdk as unknown as {
   Horizon: { Server: new (url: string) => any };
@@ -282,12 +343,15 @@ async function deployCampaignContract(
 
   const admin = requireAdminSecret();
   await fundAdminIfNeeded(admin);
+  const resolvedWasmPath = await ensureContractWasmPath();
 
   const { stdout } = await execFileAsync("stellar", [
     "contract",
     "deploy",
     "--wasm",
-    contractWasmPath,
+    resolvedWasmPath,
+    "--rpc-url",
+    sorobanRpcUrl,
     "--source",
     admin,
     "--network",
@@ -439,13 +503,26 @@ async function getContractBalance(contractId: string): Promise<number> {
 // ---------------------------------------------------------------------------
 
 async function verifyCampaignFunded(contractId: string, expectedBudgetStroops: bigint): Promise<boolean> {
-  try {
-    const info = await getCampaignInfo(contractId);
-    const remainingStroops = BigInt(Math.round(info.remainingBudgetXLM * 10_000_000));
-    return remainingStroops >= expectedBudgetStroops;
-  } catch {
-    return false;
+  const attempts = 6;
+  const waitMs = 1_500;
+
+  for (let index = 0; index < attempts; index += 1) {
+    try {
+      const info = await getCampaignInfo(contractId);
+      const remainingStroops = BigInt(Math.round(info.remainingBudgetXLM * 10_000_000));
+      if (remainingStroops >= expectedBudgetStroops) {
+        return true;
+      }
+    } catch {
+      // Retry below.
+    }
+
+    if (index < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
   }
+
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -466,6 +543,7 @@ async function buildInitializeTx(params: {
 
   const admin = requireAdminSecret();
   await fundAdminIfNeeded(admin);
+  const resolvedWasmPath = await ensureContractWasmPath();
 
   // Deploy a fresh contract if we don't have one yet
   let contractId = existingContractId;
@@ -474,7 +552,9 @@ async function buildInitializeTx(params: {
       "contract",
       "deploy",
       "--wasm",
-      contractWasmPath,
+      resolvedWasmPath,
+      "--rpc-url",
+      sorobanRpcUrl,
       "--source",
       admin,
       "--network",

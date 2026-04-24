@@ -11,9 +11,10 @@ import {
   endCampaign,
   getCampaignInfo,
   getContractBalance,
-  triggerCreatorPayout,
   verifyCampaignFunded
 } from "../services/sorobanClient.ts";
+import { executeCampaignPayouts } from "../services/payoutService.ts";
+import { encryptSecretKey } from "../services/stellar.ts";
 import { sendError, sendSuccess } from "../utils/api-response.ts";
 
 const campaignsRouter = Router();
@@ -546,13 +547,23 @@ campaignsRouter.patch("/:id", requireAuth, requireRole("FOUNDER"), async (reques
     try {
       const funded = await verifyCampaignFunded(resolvedContractId, expectedBudget);
       if (!funded) {
-        sendError(
-          response,
-          `On-chain balance does not match expected budget of ${existingCampaign.budget} XLM. ` +
-            "Ensure the contract is funded before activating.",
-          400
-        );
-        return;
+        // If we already have a submitted initialize tx hash from Freighter,
+        // don't hard-block activation on transient RPC lag.
+        if (!incomingTxHash) {
+          sendError(
+            response,
+            `On-chain balance does not match expected budget of ${existingCampaign.budget} XLM. ` +
+              "Ensure the contract is funded before activating.",
+            400
+          );
+          return;
+        }
+
+        console.warn("verifyCampaignFunded returned false, but funding tx hash was provided; proceeding", {
+          campaignId,
+          contractId: resolvedContractId,
+          incomingTxHash
+        });
       }
     } catch (err) {
       // If verification fails (e.g. RPC unavailable), log and proceed — don't block activation
@@ -699,18 +710,7 @@ campaignsRouter.get("/:id/leaderboard", async (request, response) => {
 campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (request, response) => {
   const campaignId = parseIdParam(request.params.id);
   const founderSecretRaw = request.query.founderSecret;
-  const creatorSecretsRaw = request.query.creatorSecrets;
   const founderSecret = typeof founderSecretRaw === "string" ? founderSecretRaw : undefined;
-  let creatorSecrets: Record<string, string> | undefined;
-
-  if (typeof creatorSecretsRaw === "string" && creatorSecretsRaw.trim().length > 0) {
-    try {
-      creatorSecrets = JSON.parse(creatorSecretsRaw) as Record<string, string>;
-    } catch {
-      sendError(response, "creatorSecrets must be a valid JSON object string", 400);
-      return;
-    }
-  }
 
   if (!campaignId) {
     sendError(response, "Campaign id is required", 400);
@@ -727,9 +727,16 @@ campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (r
     return;
   }
 
+  try {
+    StellarSdk.Keypair.fromSecret(founderSecret);
+  } catch {
+    sendError(response, "founderSecret must be a valid Stellar secret key", 400);
+    return;
+  }
+
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { id: true, founderId: true, stellarContractId: true, contractId: true }
+    select: { id: true, founderId: true, stellarContractId: true, contractId: true, remainingBudget: true }
   });
 
   if (!campaign) {
@@ -759,7 +766,10 @@ campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (r
     const endTx = await endCampaign(resolvedContractId, founderSecret);
     await prisma.campaign.update({
       where: { id: campaign.id },
-      data: { status: CampaignStatus.ENDED }
+      data: {
+        status: CampaignStatus.ENDED,
+        stellarWalletSecretKeyEncrypted: encryptSecretKey(founderSecret)
+      }
     });
 
     writeSse(response, "campaign-ended", {
@@ -767,105 +777,20 @@ campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (r
       txUrl: getTxUrl(endTx.txHash)
     });
 
-    const groupedScores = await prisma.score.groupBy({
-      by: ["userId"],
-      where: { campaignId: campaign.id },
-      _sum: { totalScore: true }
-    });
-
-    const userIds = groupedScores.map((entry) => entry.userId);
-    const users = await prisma.user.findMany({
-      where: { id: { in: userIds } },
-      select: { id: true, name: true, walletAddress: true }
-    });
-
-    const usersById = new Map(users.map((user) => [user.id, user]));
-
-    for (const score of groupedScores) {
-      const user = usersById.get(score.userId);
-      const scoreValue = score._sum.totalScore ?? 0;
-
-      if (!user || scoreValue <= 0) {
-        continue;
-      }
-
-      if (!user.walletAddress) {
-        const payout = await prisma.payout.create({
-          data: { userId: user.id, campaignId: campaign.id, amount: 0, status: "FAILED" }
-        });
-
-        writeSse(response, "payout", {
-          payoutId: payout.id,
-          creatorId: user.id,
-          creatorName: user.name,
-          amountXLM: 0,
-          status: "FAILED",
-          reason: "Creator wallet is not connected",
-          txHash: null,
-          txUrl: null
-        });
-        continue;
-      }
-
-      const creatorSecret = creatorSecrets?.[user.id];
-      if (!creatorSecret) {
-        const payout = await prisma.payout.create({
-          data: { userId: user.id, campaignId: campaign.id, amount: 0, status: "FAILED" }
-        });
-
-        writeSse(response, "payout", {
-          payoutId: payout.id,
-          creatorId: user.id,
-          creatorName: user.name,
-          amountXLM: 0,
-          status: "FAILED",
-          reason: "creatorSecrets entry is missing for this creator",
-          txHash: null,
-          txUrl: null
-        });
-        continue;
-      }
-
-      try {
-        const payoutResult = await triggerCreatorPayout(resolvedContractId, creatorSecret);
-        const payout = await prisma.payout.create({
-          data: {
-            userId: user.id,
-            campaignId: campaign.id,
-            amount: payoutResult.amountXLM,
-            status: "COMPLETED",
-            stellarTxHash: payoutResult.txHash
-          }
-        });
-
-        writeSse(response, "payout", {
-          payoutId: payout.id,
-          creatorId: user.id,
-          creatorName: user.name,
-          amountXLM: payoutResult.amountXLM,
-          status: "COMPLETED",
-          txHash: payoutResult.txHash,
-          txUrl: getTxUrl(payoutResult.txHash)
-        });
-      } catch (error) {
-        const payout = await prisma.payout.create({
-          data: { userId: user.id, campaignId: campaign.id, amount: 0, status: "FAILED" }
-        });
-
-        writeSse(response, "payout", {
-          payoutId: payout.id,
-          creatorId: user.id,
-          creatorName: user.name,
-          amountXLM: 0,
-          status: "FAILED",
-          reason: error instanceof Error ? error.message : "Payout failed",
-          txHash: null,
-          txUrl: null
-        });
-      }
+    const payoutExecution = await executeCampaignPayouts(campaign.id, { allowManualTrigger: true });
+    for (const payout of payoutExecution.payouts) {
+      writeSse(response, "payout", {
+        payoutId: payout.payoutId,
+        creatorId: payout.userId,
+        creatorName: payout.userName,
+        amountXLM: payout.amount,
+        status: payout.status,
+        txHash: payout.stellarTxHash,
+        txUrl: payout.stellarTxUrl
+      });
     }
 
-    const balance = await getContractBalance(resolvedContractId);
+    const balance = await getContractBalance(resolvedContractId).catch(() => 0);
     await prisma.campaign.update({
       where: { id: campaign.id },
       data: { remainingBudget: balance }
@@ -874,7 +799,8 @@ campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (r
     writeSse(response, "done", {
       campaignId: campaign.id,
       contractId: resolvedContractId,
-      balanceXLM: balance
+      balanceXLM: balance,
+      distributedBudget: payoutExecution.distributedBudget
     });
   } catch (error) {
     writeSse(response, "error", {
