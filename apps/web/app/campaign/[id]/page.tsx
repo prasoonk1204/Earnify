@@ -15,8 +15,12 @@ import { StatusBadge } from "../../../components/StatusBadge";
 import { useAuth } from "../../../components/auth/useAuth";
 import { withAuth } from "../../../components/auth/withAuth";
 import { useToast } from "../../../components/toast/ToastProvider";
+import { useWallet } from "../../../components/wallet/WalletProvider";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+const HORIZON_URL = process.env.NEXT_PUBLIC_STELLAR_HORIZON_URL ?? "https://horizon-testnet.stellar.org";
+const NETWORK_PASSPHRASE =
+  process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE ?? "Test SDF Network ; September 2015";
 
 type CampaignDetails = {
   id: string;
@@ -79,6 +83,23 @@ type ContractInfo = {
   explorerUrl: string;
 };
 
+type FreighterSignFn = (
+  xdr: string,
+  opts: { networkPassphrase: string }
+) => Promise<{ signedTxXdr: string; error?: string }>;
+
+async function getFreighterSign(): Promise<FreighterSignFn | null> {
+  try {
+    const mod = await import("@stellar/freighter-api");
+    const api = (mod as unknown as { freighterApi?: { signTransaction: FreighterSignFn } }).freighterApi
+      ?? (mod as unknown as { signTransaction: FreighterSignFn });
+    if (typeof api?.signTransaction === "function") return api.signTransaction.bind(api);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function truncateAddress(value: string) {
   return `${value.slice(0, 6)}...${value.slice(-6)}`;
 }
@@ -132,6 +153,7 @@ function PostSubmissionFallback() {
 function CampaignDetailsPage() {
   const { user } = useAuth();
   const { pushToast } = useToast();
+  const { walletAddress, isConnected: walletConnected } = useWallet();
   const params = useParams<{ id: string }>();
   const campaignId = params.id;
 
@@ -159,7 +181,6 @@ function CampaignDetailsPage() {
   const [showPayoutConfirm, setShowPayoutConfirm] = useState(false);
   const [triggeringPayout, setTriggeringPayout] = useState(false);
   const [payoutStreaming, setPayoutStreaming] = useState(false);
-  const [founderSecret, setFounderSecret] = useState("");
   const [contractInfo, setContractInfo] = useState<ContractInfo | null>(null);
 
   useEffect(() => {
@@ -295,8 +316,12 @@ function CampaignDetailsPage() {
   }, [campaignId]);
 
   const handleTriggerPayout = async () => {
-    if (!campaignId || !founderSecret.trim()) {
-      setPayoutError("Founder secret is required to authorize on-chain payout transactions");
+    if (!campaignId) {
+      return;
+    }
+
+    if (!walletConnected || !walletAddress) {
+      setPayoutError("Connect your founder Freighter wallet to end campaign on-chain");
       return;
     }
 
@@ -305,10 +330,57 @@ function CampaignDetailsPage() {
     setPayoutError(null);
 
     try {
+      const endTxResponse = await fetch(`${apiBaseUrl}/api/campaigns/${campaignId}/end-campaign-tx`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          founderPublicKey: walletAddress
+        })
+      });
+
+      const endTxPayload = (await endTxResponse.json()) as ApiResponse<{
+        xdr: string;
+        networkPassphrase: string;
+      }>;
+
+      if (!endTxResponse.ok || !endTxPayload.success || !endTxPayload.data) {
+        setPayoutError(endTxPayload.error ?? "Failed to prepare end-campaign transaction");
+        setPayoutStreaming(false);
+        return;
+      }
+
+      const freighterSign = await getFreighterSign();
+      if (!freighterSign) {
+        setPayoutError("Freighter extension not available");
+        setPayoutStreaming(false);
+        return;
+      }
+
+      const signResult = await freighterSign(endTxPayload.data.xdr, {
+        networkPassphrase: endTxPayload.data.networkPassphrase
+      });
+      if (signResult.error) {
+        setPayoutError(`Freighter signing failed: ${signResult.error}`);
+        setPayoutStreaming(false);
+        return;
+      }
+
+      const sdk = await import("@stellar/stellar-sdk");
+      const horizon = new sdk.Horizon.Server(HORIZON_URL);
+      const signedTx = sdk.TransactionBuilder.fromXDR(
+        signResult.signedTxXdr,
+        endTxPayload.data.networkPassphrase ?? NETWORK_PASSPHRASE
+      );
+      const submission = await horizon.submitTransaction(signedTx);
+
       const streamUrl = new URL(`${apiBaseUrl}/api/campaigns/${campaignId}/payout`);
-      streamUrl.searchParams.set("founderSecret", founderSecret.trim());
+      streamUrl.searchParams.set("endTxHash", submission.hash);
 
       const eventSource = new EventSource(streamUrl.toString(), { withCredentials: true });
+      let streamCompleted = false;
 
       eventSource.addEventListener("payout", (event) => {
         const data = JSON.parse(event.data) as {
@@ -338,12 +410,57 @@ function CampaignDetailsPage() {
         });
       });
 
+      eventSource.addEventListener("campaign-ended", () => {
+        setCampaign((previous) => {
+          if (!previous) {
+            return previous;
+          }
+
+          return {
+            ...previous,
+            status: "ENDED"
+          };
+        });
+      });
+
       eventSource.addEventListener("done", () => {
+        setCampaign((previous) => {
+          if (!previous) {
+            return previous;
+          }
+
+          return {
+            ...previous,
+            status: "ENDED",
+            remainingBudget: 0,
+            stats: {
+              ...previous.stats,
+              remainingBudget: 0
+            }
+          };
+        });
+        streamCompleted = true;
         setPayoutStreaming(false);
         eventSource.close();
       });
 
+      eventSource.addEventListener("payout-error", (event) => {
+        streamCompleted = true;
+        setPayoutStreaming(false);
+        try {
+          const payload = JSON.parse((event as MessageEvent).data) as { message?: string };
+          setPayoutError(payload.message ?? "Failed to execute payout stream");
+        } catch {
+          setPayoutError("Failed to execute payout stream");
+        }
+        eventSource.close();
+      });
+
       eventSource.addEventListener("error", () => {
+        if (streamCompleted) {
+          return;
+        }
+
         setPayoutStreaming(false);
         setPayoutError("Payout stream disconnected before completion");
         eventSource.close();
@@ -621,21 +738,7 @@ function CampaignDetailsPage() {
                   </button>
                 ) : null}
               </div>
-
-              <div className="max-w-md mb-8">
-                <label htmlFor="founder-secret" className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)] mb-2">
-                  Founder Stellar Secret
-                </label>
-                <input
-                  id="founder-secret"
-                  type="password"
-                  value={founderSecret}
-                  onChange={(event) => setFounderSecret(event.target.value)}
-                  placeholder="S..."
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] transition-all"
-                />
-                {payoutError && <p className="mt-2 text-sm text-[var(--color-danger)]">{payoutError}</p>}
-              </div>
+              {payoutError ? <p className="mb-6 text-sm text-[var(--color-danger)]">{payoutError}</p> : null}
 
               {showPayoutConfirm ? (
                 <div className="rounded-xl border border-[var(--color-primary)]/50 bg-[var(--color-surface)] p-6 mb-8">

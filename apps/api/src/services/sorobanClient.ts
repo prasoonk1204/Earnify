@@ -476,11 +476,23 @@ async function getCampaignInfo(
     campaignContractId,
     method: "get_all_scores",
     args: []
-  })) as Map<string, bigint> | null;
+  })) as unknown;
 
   const creatorScores: Record<string, number> = {};
-  if (scores) {
+
+  // Soroban SDK may decode maps as Map, array tuples, or plain objects.
+  if (scores instanceof Map) {
     for (const [key, value] of scores.entries()) {
+      creatorScores[String(key)] = Number(value);
+    }
+  } else if (Array.isArray(scores)) {
+    for (const entry of scores) {
+      if (Array.isArray(entry) && entry.length >= 2) {
+        creatorScores[String(entry[0])] = Number(entry[1]);
+      }
+    }
+  } else if (scores && typeof scores === "object") {
+    for (const [key, value] of Object.entries(scores as Record<string, unknown>)) {
       creatorScores[key] = Number(value);
     }
   }
@@ -596,8 +608,39 @@ async function buildInitializeTx(params: {
   return { contractId, xdr, networkPassphrase };
 }
 
+async function buildEndCampaignTx(params: {
+  founderPublicKey: string;
+  campaignContractId: string;
+}): Promise<{ xdr: string; networkPassphrase: string }> {
+  const { founderPublicKey, campaignContractId } = params;
+
+  const founderAccount = await horizon.loadAccount(founderPublicKey);
+  const contract = new sdk.Contract(campaignContractId);
+
+  const tx = new sdk.TransactionBuilder(founderAccount, {
+    fee: "1000000",
+    networkPassphrase
+  })
+    .addOperation(
+      contract.call("end_campaign", sdk.nativeToScVal(founderPublicKey, { type: "address" }))
+    )
+    .setTimeout(60)
+    .build();
+
+  const simulation = await sorobanRpc.simulateTransaction(tx);
+  if (rpcNs.Api.isSimulationError(simulation)) {
+    throw new Error("Simulation of end_campaign() failed — check campaign state");
+  }
+
+  const assembled = rpcNs.assembleTransaction(tx, simulation).build();
+  const xdr = assembled.toEnvelope().toXDR("base64");
+
+  return { xdr, networkPassphrase };
+}
+
 export {
   buildInitializeTx,
+  buildEndCampaignTx,
   deployCampaignContract,
   endCampaign,
   getCampaignInfo,

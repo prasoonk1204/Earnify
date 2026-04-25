@@ -3,18 +3,18 @@ import { Router } from "express";
 import { CampaignStatus, prisma } from "@earnify/db";
 import * as StellarSdk from "@stellar/stellar-sdk";
 
-import { requireAuth, requireRole } from "../../middleware/auth.ts";
+import { optionalAuth, requireAuth, requireRole } from "../../middleware/auth.ts";
 import { getTopN } from "../services/leaderboard.ts";
 import {
+  buildEndCampaignTx,
   buildInitializeTx,
   deployCampaignContract,
-  endCampaign,
   getCampaignInfo,
   getContractBalance,
   verifyCampaignFunded
 } from "../services/sorobanClient.ts";
 import { executeCampaignPayouts } from "../services/payoutService.ts";
-import { encryptSecretKey } from "../services/stellar.ts";
+import { createCampaignWallet, encryptSecretKey, getWalletBalance } from "../services/stellar.ts";
 import { sendError, sendSuccess } from "../utils/api-response.ts";
 
 const campaignsRouter = Router();
@@ -60,6 +60,21 @@ function getTxUrl(hash: string | null) {
 function writeSse(response: { write: (chunk: string) => void }, event: string, data: unknown) {
   response.write(`event: ${event}\n`);
   response.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+async function waitForOnChainEnded(contractId: string, attempts = 8, delayMs = 1500) {
+  for (let index = 0; index < attempts; index += 1) {
+    const info = await getCampaignInfo(contractId);
+    if (String(info.status).toUpperCase() === "ENDED") {
+      return true;
+    }
+
+    if (index < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  return false;
 }
 
 const VALID_PLATFORMS = ["X", "INSTAGRAM", "LINKEDIN", "TWITTER"] as const;
@@ -271,6 +286,8 @@ campaignsRouter.post("/", requireAuth, requireRole("FOUNDER"), async (request, r
   }
 
   try {
+    const campaignWallet = await createCampaignWallet();
+
     const campaign = await prisma.campaign.create({
       data: {
         title: (title as string).trim(),
@@ -287,7 +304,8 @@ campaignsRouter.post("/", requireAuth, requireRole("FOUNDER"), async (request, r
         status: CampaignStatus.DRAFT,
         founderId: request.user.id,
         founderWalletAddress: request.user.walletAddress ?? null,
-        stellarWalletPublicKey: request.user.walletAddress ?? ""
+        stellarWalletPublicKey: campaignWallet.publicKey,
+        stellarWalletSecretKeyEncrypted: encryptSecretKey(campaignWallet.secretKey)
       }
     });
 
@@ -322,7 +340,7 @@ campaignsRouter.post("/", requireAuth, requireRole("FOUNDER"), async (request, r
 // GET /api/campaigns — public ACTIVE campaigns + founder's own campaigns
 // ---------------------------------------------------------------------------
 
-campaignsRouter.get("/", async (request, response) => {
+campaignsRouter.get("/", optionalAuth, async (request, response) => {
   // Try to extract the authenticated user (optional — no hard failure)
   let authenticatedUserId: string | null = null;
   let authenticatedUserRole: string | null = null;
@@ -378,6 +396,66 @@ campaignsRouter.get("/", async (request, response) => {
         updatedAt: campaign.updatedAt.toISOString(),
         postCount: campaign._count.posts,
         isOwn: campaign.founderId === authenticatedUserId
+      }))
+    );
+
+    return;
+  }
+
+  // Users see all ACTIVE campaigns + campaigns they've participated in
+  if (authenticatedUserRole === "USER" && authenticatedUserId) {
+    const [activeCampaigns, participatedCampaigns] = await Promise.all([
+      prisma.campaign.findMany({
+        where: { status: CampaignStatus.ACTIVE },
+        include: { _count: { select: { posts: true } } },
+        orderBy: { createdAt: "desc" }
+      }),
+      prisma.campaign.findMany({
+        where: {
+          status: { not: CampaignStatus.DRAFT },
+          posts: {
+            some: {
+              userId: authenticatedUserId
+            }
+          }
+        },
+        include: { _count: { select: { posts: true } } },
+        orderBy: { createdAt: "desc" }
+      })
+    ]);
+
+    const seen = new Set<string>();
+    const merged = [...participatedCampaigns, ...activeCampaigns].filter((campaign) => {
+      if (seen.has(campaign.id)) {
+        return false;
+      }
+
+      seen.add(campaign.id);
+      return true;
+    });
+
+    sendSuccess(
+      response,
+      merged.map((campaign) => ({
+        id: campaign.id,
+        title: campaign.title,
+        description: campaign.description,
+        productUrl: campaign.productUrl,
+        budget: campaign.budget,
+        budgetToken: campaign.budgetToken,
+        platforms: campaign.platforms,
+        requiredKeywords: campaign.requiredKeywords,
+        startDate: campaign.startDate?.toISOString() ?? null,
+        endDate: campaign.endDate?.toISOString() ?? null,
+        totalBudget: toNumber(campaign.totalBudget),
+        remainingBudget: toNumber(campaign.remainingBudget),
+        status: campaign.status,
+        founderId: campaign.founderId,
+        contractId: campaign.contractId ?? campaign.stellarContractId,
+        endsAt: campaign.endsAt?.toISOString() ?? null,
+        createdAt: campaign.createdAt.toISOString(),
+        updatedAt: campaign.updatedAt.toISOString(),
+        postCount: campaign._count.posts
       }))
     );
 
@@ -526,7 +604,7 @@ campaignsRouter.patch("/:id", requireAuth, requireRole("FOUNDER"), async (reques
 
   const existingCampaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { founderId: true, budget: true, contractId: true }
+    select: { founderId: true, budget: true, contractId: true, stellarWalletPublicKey: true }
   });
 
   if (!existingCampaign) {
@@ -541,11 +619,22 @@ campaignsRouter.patch("/:id", requireAuth, requireRole("FOUNDER"), async (reques
 
   // When activating, verify on-chain funding if a contractId is available
   const resolvedContractId = incomingContractId ?? existingCampaign.contractId ?? null;
+  let walletBalanceAtActivation: number | null = null;
 
   if (status === CampaignStatus.ACTIVE && resolvedContractId) {
-    const expectedBudget = BigInt(Math.round(Number(existingCampaign.budget) * 10_000_000));
+    const expectedBudgetXlm = Number(existingCampaign.budget);
+    const expectedBudget = BigInt(Math.round(expectedBudgetXlm * 10_000_000));
     try {
-      const funded = await verifyCampaignFunded(resolvedContractId, expectedBudget);
+      const [fundedOnContract, campaignWalletBalance] = await Promise.all([
+        verifyCampaignFunded(resolvedContractId, expectedBudget),
+        existingCampaign.stellarWalletPublicKey
+          ? getWalletBalance(existingCampaign.stellarWalletPublicKey)
+          : Promise.resolve(0)
+      ]);
+      walletBalanceAtActivation = campaignWalletBalance;
+
+      const fundedOnWallet = campaignWalletBalance >= expectedBudgetXlm;
+      const funded = fundedOnContract || fundedOnWallet;
       if (!funded) {
         // If we already have a submitted initialize tx hash from Freighter,
         // don't hard-block activation on transient RPC lag.
@@ -573,6 +662,9 @@ campaignsRouter.patch("/:id", requireAuth, requireRole("FOUNDER"), async (reques
 
   const updateData: Record<string, unknown> = {};
   if (status) updateData.status = status;
+  if (status === CampaignStatus.ACTIVE) {
+    updateData.remainingBudget = Number(existingCampaign.budget);
+  }
   if (incomingContractId) {
     updateData.contractId = incomingContractId;
     updateData.stellarContractId = incomingContractId;
@@ -624,7 +716,15 @@ campaignsRouter.post("/:id/deploy-contract", requireAuth, requireRole("FOUNDER")
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { id: true, founderId: true, budget: true, contractId: true, stellarContractId: true }
+    select: {
+      id: true,
+      founderId: true,
+      budget: true,
+      contractId: true,
+      stellarContractId: true,
+      stellarWalletPublicKey: true,
+      stellarWalletSecretKeyEncrypted: true
+    }
   });
 
   if (!campaign) {
@@ -635,6 +735,23 @@ campaignsRouter.post("/:id/deploy-contract", requireAuth, requireRole("FOUNDER")
   if (campaign.founderId !== request.user.id) {
     sendError(response, "Forbidden", 403);
     return;
+  }
+
+  let campaignWalletAddress = campaign.stellarWalletPublicKey;
+  if (!campaignWalletAddress || !campaign.stellarWalletSecretKeyEncrypted) {
+    const freshCampaignWallet = await createCampaignWallet();
+    const updatedCampaign = await prisma.campaign.update({
+      where: { id: campaign.id },
+      data: {
+        stellarWalletPublicKey: freshCampaignWallet.publicKey,
+        stellarWalletSecretKeyEncrypted: encryptSecretKey(freshCampaignWallet.secretKey)
+      },
+      select: {
+        stellarWalletPublicKey: true
+      }
+    });
+
+    campaignWalletAddress = updatedCampaign.stellarWalletPublicKey;
   }
 
   // If already deployed, return the existing contract + a fresh unsigned XDR
@@ -668,11 +785,74 @@ campaignsRouter.post("/:id/deploy-contract", requireAuth, requireRole("FOUNDER")
     sendSuccess(response, {
       contractId: result.contractId,
       xdr: result.xdr,
-      networkPassphrase: result.networkPassphrase
+      networkPassphrase: result.networkPassphrase,
+      campaignWalletAddress
     });
   } catch (error) {
     console.error("deploy-contract failed", error);
     sendError(response, error instanceof Error ? error.message : "Contract deployment failed", 500);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/campaigns/:id/end-campaign-tx
+// Returns unsigned XDR for founder wallet to sign with Freighter.
+// ---------------------------------------------------------------------------
+
+campaignsRouter.post("/:id/end-campaign-tx", requireAuth, requireRole("FOUNDER"), async (request, response) => {
+  const campaignId = parseIdParam(request.params.id);
+
+  if (!campaignId) {
+    sendError(response, "Campaign id is required", 400);
+    return;
+  }
+
+  if (!request.user) {
+    sendError(response, "Unauthorized", 401);
+    return;
+  }
+
+  const { founderPublicKey } = request.body as { founderPublicKey?: string };
+  if (!founderPublicKey || !StellarSdk.StrKey.isValidEd25519PublicKey(founderPublicKey)) {
+    sendError(response, "founderPublicKey must be a valid Stellar public key", 400);
+    return;
+  }
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { id: true, founderId: true, status: true, contractId: true, stellarContractId: true }
+  });
+
+  if (!campaign) {
+    sendError(response, "Campaign not found", 404);
+    return;
+  }
+
+  if (campaign.founderId !== request.user.id) {
+    sendError(response, "Forbidden", 403);
+    return;
+  }
+
+  const resolvedContractId = campaign.contractId ?? campaign.stellarContractId;
+  if (!resolvedContractId) {
+    sendError(response, "Campaign is missing a Soroban contract id", 400);
+    return;
+  }
+
+  if (campaign.status !== CampaignStatus.ACTIVE) {
+    sendError(response, "Campaign must be ACTIVE to end on-chain", 400);
+    return;
+  }
+
+  try {
+    const payload = await buildEndCampaignTx({
+      founderPublicKey,
+      campaignContractId: resolvedContractId
+    });
+
+    sendSuccess(response, payload);
+  } catch (error) {
+    sendError(response, error instanceof Error ? error.message : "Failed to build end-campaign tx", 500);
   }
 });
 
@@ -709,8 +889,8 @@ campaignsRouter.get("/:id/leaderboard", async (request, response) => {
 
 campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (request, response) => {
   const campaignId = parseIdParam(request.params.id);
-  const founderSecretRaw = request.query.founderSecret;
-  const founderSecret = typeof founderSecretRaw === "string" ? founderSecretRaw : undefined;
+  const endTxHashRaw = request.query.endTxHash;
+  const endTxHash = typeof endTxHashRaw === "string" ? endTxHashRaw : null;
 
   if (!campaignId) {
     sendError(response, "Campaign id is required", 400);
@@ -722,21 +902,16 @@ campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (r
     return;
   }
 
-  if (!founderSecret) {
-    sendError(response, "founderSecret is required", 400);
-    return;
-  }
-
-  try {
-    StellarSdk.Keypair.fromSecret(founderSecret);
-  } catch {
-    sendError(response, "founderSecret must be a valid Stellar secret key", 400);
-    return;
-  }
-
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { id: true, founderId: true, stellarContractId: true, contractId: true, remainingBudget: true }
+    select: {
+      id: true,
+      founderId: true,
+      stellarContractId: true,
+      contractId: true,
+      remainingBudget: true,
+      stellarWalletPublicKey: true
+    }
   });
 
   if (!campaign) {
@@ -763,18 +938,22 @@ campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (r
   response.flushHeaders();
 
   try {
-    const endTx = await endCampaign(resolvedContractId, founderSecret);
+    const endedConfirmed = await waitForOnChainEnded(resolvedContractId);
+    if (!endedConfirmed) {
+      writeSse(response, "payout-error", {
+        message: "Campaign end transaction is still confirming on-chain. Please wait a few seconds and retry."
+      });
+      return;
+    }
+
     await prisma.campaign.update({
       where: { id: campaign.id },
-      data: {
-        status: CampaignStatus.ENDED,
-        stellarWalletSecretKeyEncrypted: encryptSecretKey(founderSecret)
-      }
+      data: { status: CampaignStatus.ENDED }
     });
 
     writeSse(response, "campaign-ended", {
-      txHash: endTx.txHash,
-      txUrl: getTxUrl(endTx.txHash)
+      txHash: endTxHash,
+      txUrl: getTxUrl(endTxHash)
     });
 
     const payoutExecution = await executeCampaignPayouts(campaign.id, { allowManualTrigger: true });
@@ -790,7 +969,9 @@ campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (r
       });
     }
 
-    const balance = await getContractBalance(resolvedContractId).catch(() => 0);
+    const balance = campaign.stellarWalletPublicKey
+      ? await getWalletBalance(campaign.stellarWalletPublicKey).catch(() => 0)
+      : 0;
     await prisma.campaign.update({
       where: { id: campaign.id },
       data: { remainingBudget: balance }
@@ -803,7 +984,7 @@ campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (r
       distributedBudget: payoutExecution.distributedBudget
     });
   } catch (error) {
-    writeSse(response, "error", {
+    writeSse(response, "payout-error", {
       message: error instanceof Error ? error.message : "Failed to execute payout"
     });
   } finally {
@@ -825,7 +1006,7 @@ campaignsRouter.get("/:id/contract-info", requireAuth, async (request, response)
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { stellarContractId: true, contractId: true }
+    select: { stellarContractId: true, contractId: true, stellarWalletPublicKey: true }
   });
 
   if (!campaign) {
@@ -841,14 +1022,17 @@ campaignsRouter.get("/:id/contract-info", requireAuth, async (request, response)
   }
 
   try {
-    const [balance, contractInfo] = await Promise.all([
+    const [contractBalance, walletBalance, contractInfo] = await Promise.all([
       getContractBalance(resolvedContractId),
+      campaign.stellarWalletPublicKey ? getWalletBalance(campaign.stellarWalletPublicKey) : Promise.resolve(0),
       getCampaignInfo(resolvedContractId)
     ]);
 
     sendSuccess(response, {
       contractId: resolvedContractId,
-      balance,
+      balance: walletBalance,
+      contractBalance,
+      campaignWalletAddress: campaign.stellarWalletPublicKey,
       status: contractInfo.status,
       creatorScores: contractInfo.creatorScores,
       explorerUrl: `https://testnet.stellar.expert/explorer/testnet/contract/${resolvedContractId}`

@@ -73,11 +73,35 @@ async function submitXlmPayment(sourceSecretKey: string, destination: string, am
 function allocatePayouts(entries: CampaignScoreEntry[], totalBudget: number) {
   const totalScore = entries.reduce((sum, entry) => sum + entry.score, 0);
 
-  if (totalScore <= 0 || totalBudget <= 0) {
+  if (totalBudget <= 0) {
     return entries.map((entry) => ({
       ...entry,
       amount: 0
     }));
+  }
+
+  if (totalScore <= 0) {
+    if (entries.length === 0) {
+      return [];
+    }
+
+    const evenShare = roundPayoutAmount(totalBudget / entries.length);
+    const allocations = entries.map((entry, index) => {
+      if (index === entries.length - 1) {
+        const allocated = evenShare * (entries.length - 1);
+        return {
+          ...entry,
+          amount: roundPayoutAmount(totalBudget - allocated)
+        };
+      }
+
+      return {
+        ...entry,
+        amount: evenShare
+      };
+    });
+
+    return allocations;
   }
 
   let allocated = 0;
@@ -114,11 +138,31 @@ async function getCampaignScoreEntries(campaignId: string): Promise<CampaignScor
     }
   });
 
-  if (groupedScores.length === 0) {
+  const [participantRows, verifiedPostRows] = await Promise.all([
+    prisma.campaignParticipant.findMany({
+      where: { campaignId },
+      select: { userId: true }
+    }),
+    prisma.post.findMany({
+      where: { campaignId, status: "VERIFIED" },
+      select: { userId: true },
+      distinct: ["userId"]
+    })
+  ]);
+
+  const scoreByUserId = new Map(groupedScores.map((entry) => [entry.userId, entry._sum.totalScore ?? 0]));
+  const userIds = Array.from(
+    new Set([
+      ...groupedScores.map((entry) => entry.userId),
+      ...participantRows.map((entry) => entry.userId),
+      ...verifiedPostRows.map((entry) => entry.userId)
+    ])
+  );
+
+  if (userIds.length === 0) {
     return [];
   }
 
-  const userIds = groupedScores.map((entry) => entry.userId);
   const users = await prisma.user.findMany({
     where: {
       id: {
@@ -134,9 +178,9 @@ async function getCampaignScoreEntries(campaignId: string): Promise<CampaignScor
 
   const userById = new Map(users.map((user) => [user.id, user]));
 
-  return groupedScores
-    .map((entry) => {
-      const user = userById.get(entry.userId);
+  return userIds
+    .map((userId) => {
+      const user = userById.get(userId);
 
       if (!user) {
         return null;
@@ -146,11 +190,11 @@ async function getCampaignScoreEntries(campaignId: string): Promise<CampaignScor
         userId: user.id,
         userName: user.name,
         walletAddress: user.walletAddress,
-        score: entry._sum.totalScore ?? 0
+        score: scoreByUserId.get(user.id) ?? 0
       };
     })
     .filter((entry): entry is CampaignScoreEntry => entry !== null)
-    .filter((entry) => entry.score > 0);
+    .filter((entry) => entry.score >= 0);
 }
 
 async function createPayoutRecord(input: {

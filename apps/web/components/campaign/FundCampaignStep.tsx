@@ -29,6 +29,7 @@ type DeployResponse = {
   contractId: string;
   xdr: string;           // unsigned transaction XDR for the founder to sign
   networkPassphrase: string;
+  campaignWalletAddress: string;
 };
 
 type ActivateResponse = {
@@ -48,14 +49,18 @@ const NETWORK_PASSPHRASE =
 // ---------------------------------------------------------------------------
 
 type StellarSdkModule = {
-  TransactionBuilder: {
-    fromXDR: (xdr: string, networkPassphrase: string) => {
-      toXDR: () => string;
-      toEnvelope: () => { toXDR: (format: "base64") => string };
-    };
+  Asset: {
+    native: () => unknown;
   };
+  Operation: {
+    payment: (input: { destination: string; asset: unknown; amount: string }) => unknown;
+    createAccount: (input: { destination: string; startingBalance: string }) => unknown;
+  };
+  TransactionBuilder: any;
   Horizon: {
     Server: new (url: string) => {
+      fetchBaseFee: () => Promise<number>;
+      loadAccount: (address: string) => Promise<unknown>;
       submitTransaction: (tx: unknown) => Promise<{ hash: string }>;
     };
   };
@@ -123,6 +128,8 @@ export function FundCampaignStep({ campaign, onSuccess, onSkip, allowSkip = true
   const [contractId, setContractId] = useState<string | null>(null);
 
   const budgetXlm = Number(campaign.budget);
+  const feeBufferXlm = 1;
+  const depositAmountXlm = budgetXlm + feeBufferXlm;
 
   // ---- Guard: wallet must be connected ----
   const walletReady = isConnected && Boolean(walletAddress);
@@ -154,7 +161,7 @@ export function FundCampaignStep({ campaign, onSuccess, onSkip, allowSkip = true
         throw new Error(deployPayload.error ?? "Contract deployment failed");
       }
 
-      const { contractId: deployedContractId, xdr, networkPassphrase } = deployPayload.data;
+      const { contractId: deployedContractId, xdr, networkPassphrase, campaignWalletAddress } = deployPayload.data;
       setContractId(deployedContractId);
 
       // Step 2 — Sign the XDR with Freighter (founder's key, never leaves browser)
@@ -173,17 +180,68 @@ export function FundCampaignStep({ campaign, onSuccess, onSkip, allowSkip = true
 
       const signedXdr = signResult.signedTxXdr;
 
-      // Step 3 — Submit the signed transaction to Horizon
+      // Step 3 — Submit initialize() transaction to Horizon
       setPhase("submitting");
 
       const sdk = await getStellarSdk();
       const horizon = new sdk.Horizon.Server(HORIZON_URL);
-      const tx = sdk.TransactionBuilder.fromXDR(signedXdr, networkPassphrase ?? NETWORK_PASSPHRASE);
-      const submitResult = await horizon.submitTransaction(tx);
-      const hash = submitResult.hash;
+      const initializeTx = sdk.TransactionBuilder.fromXDR(signedXdr, networkPassphrase ?? NETWORK_PASSPHRASE);
+      await horizon.submitTransaction(initializeTx);
+
+      // Step 4 — Build founder -> campaign-wallet funding transaction.
+      // If campaign wallet account is missing, create it with starting balance.
+      let campaignWalletExists = true;
+      try {
+        await horizon.loadAccount(campaignWalletAddress);
+      } catch {
+        campaignWalletExists = false;
+      }
+
+      const founderAccount = await horizon.loadAccount(walletAddress);
+      const fee = String(await horizon.fetchBaseFee());
+      const amount = depositAmountXlm.toFixed(7);
+
+      const fundingBuilder = new sdk.TransactionBuilder(founderAccount, {
+        fee,
+        networkPassphrase: networkPassphrase ?? NETWORK_PASSPHRASE
+      });
+
+      if (campaignWalletExists) {
+        fundingBuilder.addOperation(
+          sdk.Operation.payment({
+            destination: campaignWalletAddress,
+            asset: sdk.Asset.native(),
+            amount
+          })
+        );
+      } else {
+        fundingBuilder.addOperation(
+          sdk.Operation.createAccount({
+            destination: campaignWalletAddress,
+            startingBalance: amount
+          })
+        );
+      }
+
+      const fundingTxUnsigned = fundingBuilder.setTimeout(60).build();
+      const fundingXdr = fundingTxUnsigned.toEnvelope().toXDR("base64");
+
+      setPhase("signing");
+      const fundingSignResult = await freighterSign(fundingXdr, { networkPassphrase });
+      if (fundingSignResult.error) {
+        throw new Error(`Freighter signing failed for funding tx: ${fundingSignResult.error}`);
+      }
+
+      setPhase("submitting");
+      const fundingTx = sdk.TransactionBuilder.fromXDR(
+        fundingSignResult.signedTxXdr,
+        networkPassphrase ?? NETWORK_PASSPHRASE
+      );
+      const fundingSubmitResult = await horizon.submitTransaction(fundingTx);
+      const hash = fundingSubmitResult.hash;
       setTxHash(hash);
 
-      // Step 4 — Activate the campaign in the DB
+      // Step 5 — Activate the campaign in the DB
       setPhase("activating");
 
       const activateRes = await fetch(`${apiBaseUrl}/api/campaigns/${campaign.id}`, {
@@ -228,7 +286,9 @@ export function FundCampaignStep({ campaign, onSuccess, onSkip, allowSkip = true
         </h2>
         <p className="mt-2 text-sm text-[var(--color-muted)] leading-relaxed max-w-xl">
           This will deploy a Soroban escrow contract and transfer{" "}
-          <strong className="font-semibold text-white">{budgetXlm} XLM</strong> from your Freighter wallet.
+          <strong className="font-semibold text-white">{depositAmountXlm} XLM</strong> from your Freighter wallet
+          (<strong className="font-semibold text-white">{budgetXlm} XLM</strong> campaign pool +{" "}
+          <strong className="font-semibold text-white">{feeBufferXlm} XLM</strong> tx-fee buffer).
           Your private key never leaves your browser.
         </p>
       </div>
@@ -367,7 +427,7 @@ export function FundCampaignStep({ campaign, onSuccess, onSkip, allowSkip = true
             ) : phase === "error" ? (
               "Retry Funding"
             ) : (
-              `Fund ${budgetXlm} XLM`
+              `Fund ${depositAmountXlm} XLM`
             )}
           </button>
 
