@@ -167,7 +167,6 @@ function CampaignDetailsPage() {
   const [campaignMissing, setCampaignMissing] = useState(false);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("leaderboard");
-  const [isLiveConnected, setIsLiveConnected] = useState(false);
 
   const [postUrl, setPostUrl] = useState("");
   const [platform, setPlatform] = useState<SocialPlatform>("TWITTER");
@@ -681,12 +680,6 @@ function CampaignDetailsPage() {
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-3xl font-bold text-white sm:text-4xl">{campaign.title}</h1>
                   <StatusBadge status={campaign.status} />
-                  {isLiveConnected && (
-                    <span className="flex items-center gap-1.5 rounded-full bg-[var(--color-success)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--color-success)] border border-[var(--color-success)]/20">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)] animate-pulse"></span>
-                      Live
-                    </span>
-                  )}
                 </div>
                 
                 <p className="text-lg leading-relaxed text-[var(--color-muted)]">{campaign.description}</p>
@@ -905,7 +898,6 @@ function CampaignDetailsPage() {
                 <Leaderboard
                   campaignId={campaignId}
                   initialEntries={leaderboard}
-                  onConnectionChange={setIsLiveConnected}
                   isLoading={loadingLeaderboard}
                 />
               </ErrorBoundary>

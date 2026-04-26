@@ -350,17 +350,17 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
     authenticatedUserRole = request.user.role;
   }
 
-  // Founders see all their own campaigns; everyone else sees only ACTIVE
+  // Founders see all their own campaigns + active campaigns
   if (authenticatedUserRole === "FOUNDER" && authenticatedUserId) {
     const [activeCampaigns, founderCampaigns] = await Promise.all([
       prisma.campaign.findMany({
         where: { status: CampaignStatus.ACTIVE },
-        include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } },
+        include: { _count: { select: { participants: true } }, founder: { select: { id: true, name: true, avatar: true } } },
         orderBy: { createdAt: "desc" }
       }),
       prisma.campaign.findMany({
         where: { founderId: authenticatedUserId },
-        include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } },
+        include: { _count: { select: { participants: true } }, founder: { select: { id: true, name: true, avatar: true } } },
         orderBy: { createdAt: "desc" }
       })
     ]);
@@ -399,7 +399,7 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
         endsAt: campaign.endsAt?.toISOString() ?? null,
         createdAt: campaign.createdAt.toISOString(),
         updatedAt: campaign.updatedAt.toISOString(),
-        postCount: campaign._count.posts,
+        postCount: campaign._count.participants,
         isOwn: campaign.founderId === authenticatedUserId
       }))
     );
@@ -407,41 +407,20 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
     return;
   }
 
-  // Users see all ACTIVE campaigns + campaigns they've participated in
+  // Users see all non-draft campaigns so dashboard tabs can correctly split
+  // live/upcoming/ended without missing states.
   if (authenticatedUserRole === "USER" && authenticatedUserId) {
-    const [activeCampaigns, participatedCampaigns] = await Promise.all([
-      prisma.campaign.findMany({
-        where: { status: CampaignStatus.ACTIVE },
-        include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } },
-        orderBy: { createdAt: "desc" }
-      }),
-      prisma.campaign.findMany({
-        where: {
-          status: { not: CampaignStatus.DRAFT },
-          posts: {
-            some: {
-              userId: authenticatedUserId
-            }
-          }
-        },
-        include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } },
-        orderBy: { createdAt: "desc" }
-      })
-    ]);
-
-    const seen = new Set<string>();
-    const merged = [...participatedCampaigns, ...activeCampaigns].filter((campaign) => {
-      if (seen.has(campaign.id)) {
-        return false;
-      }
-
-      seen.add(campaign.id);
-      return true;
+    const campaigns = await prisma.campaign.findMany({
+      where: {
+        status: { not: CampaignStatus.DRAFT }
+      },
+      include: { _count: { select: { participants: true } }, founder: { select: { id: true, name: true, avatar: true } } },
+      orderBy: { createdAt: "desc" }
     });
 
     sendSuccess(
       response,
-      merged.map((campaign) => ({
+      campaigns.map((campaign) => ({
         id: campaign.id,
         title: campaign.title,
         description: campaign.description,
@@ -465,17 +444,17 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
         endsAt: campaign.endsAt?.toISOString() ?? null,
         createdAt: campaign.createdAt.toISOString(),
         updatedAt: campaign.updatedAt.toISOString(),
-        postCount: campaign._count.posts
+        postCount: campaign._count.participants
       }))
     );
 
     return;
   }
 
-  // Public: only ACTIVE campaigns
+  // Public: return non-draft campaigns so landing can separate live/upcoming/ended.
   const campaigns = await prisma.campaign.findMany({
-    where: { status: CampaignStatus.ACTIVE },
-    include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } },
+    where: { status: { not: CampaignStatus.DRAFT } },
+    include: { _count: { select: { participants: true } }, founder: { select: { id: true, name: true, avatar: true } } },
     orderBy: { createdAt: "desc" }
   });
 
@@ -505,7 +484,7 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
       endsAt: campaign.endsAt?.toISOString() ?? null,
       createdAt: campaign.createdAt.toISOString(),
       updatedAt: campaign.updatedAt.toISOString(),
-      postCount: campaign._count.posts
+      postCount: campaign._count.participants
     }))
   );
 });
@@ -524,7 +503,7 @@ campaignsRouter.get("/:id", async (request, response) => {
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } }
+    include: { _count: { select: { participants: true } }, founder: { select: { id: true, name: true, avatar: true } } }
   });
 
   if (!campaign) {
@@ -570,7 +549,7 @@ campaignsRouter.get("/:id", async (request, response) => {
     createdAt: campaign.createdAt.toISOString(),
     updatedAt: campaign.updatedAt.toISOString(),
     stats: {
-      postCount: campaign._count.posts,
+      postCount: campaign._count.participants,
       remainingBudget: toNumber(campaign.remainingBudget),
       topScorer: topScore
         ? {

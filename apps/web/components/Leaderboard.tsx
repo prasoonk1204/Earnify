@@ -12,7 +12,6 @@ import { Skeleton } from "./Skeleton";
 type LeaderboardProps = {
   campaignId: string;
   initialEntries?: LeaderboardEntry[];
-  onConnectionChange?: (isConnected: boolean) => void;
   isLoading?: boolean;
 };
 
@@ -110,7 +109,7 @@ function PlatformBadge({ platform }: { platform: SocialPlatform }) {
 // Component
 // ---------------------------------------------------------------------------
 
-export function Leaderboard({ campaignId, initialEntries = [], onConnectionChange, isLoading: externalLoading = false }: LeaderboardProps) {
+export function Leaderboard({ campaignId, initialEntries = [], isLoading: externalLoading = false }: LeaderboardProps) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>(initialEntries);
   const [fetchLoading, setFetchLoading] = useState(initialEntries.length === 0);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
@@ -175,12 +174,7 @@ export function Leaderboard({ campaignId, initialEntries = [], onConnectionChang
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      onConnectionChange?.(true);
       socket.emit("join-campaign", { campaignId });
-    });
-
-    socket.on("disconnect", () => {
-      onConnectionChange?.(false);
     });
 
     socket.on(
@@ -221,11 +215,10 @@ export function Leaderboard({ campaignId, initialEntries = [], onConnectionChang
       if (movementTimerRef.current) {
         window.clearTimeout(movementTimerRef.current);
       }
-      onConnectionChange?.(false);
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [campaignId, onConnectionChange]);
+  }, [campaignId]);
 
   const hasEntries = useMemo(() => entries.length > 0, [entries]);
 

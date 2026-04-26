@@ -8,11 +8,6 @@ import type { Route } from "next";
 import { useAuth } from "./auth/useAuth";
 import { ConnectWalletButton } from "./wallet/ConnectWalletButton";
 
-type NavbarProps = {
-  onToggleTheme?: () => void;
-  isDarkMode?: boolean;
-};
-
 type NavItem = {
   href: string;
   label: string;
@@ -29,7 +24,7 @@ function isActivePath(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
-export function Navbar({ onToggleTheme, isDarkMode }: NavbarProps) {
+export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -97,17 +92,6 @@ export function Navbar({ onToggleTheme, isDarkMode }: NavbarProps) {
             </button>
           )}
 
-          {onToggleTheme ? (
-            <button
-              type="button"
-              onClick={onToggleTheme}
-              className="inline-flex h-9 w-9 items-center justify-center border border-zinc-700 bg-zinc-900 text-zinc-300 hover:text-white"
-              aria-label="Toggle theme"
-              title="Toggle theme"
-            >
-              {isDarkMode ? "◐" : "◑"}
-            </button>
-          ) : null}
         </div>
 
         <button
