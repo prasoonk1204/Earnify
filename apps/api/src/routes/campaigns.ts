@@ -968,6 +968,15 @@ campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (r
         txUrl: payout.stellarTxUrl
       });
     }
+    if (payoutExecution.refund) {
+      writeSse(response, "refund", {
+        destination: payoutExecution.refund.destination || null,
+        amountXLM: payoutExecution.refund.amount,
+        status: payoutExecution.refund.status,
+        txHash: payoutExecution.refund.stellarTxHash,
+        txUrl: payoutExecution.refund.stellarTxUrl
+      });
+    }
 
     const balance = campaign.stellarWalletPublicKey
       ? await getWalletBalance(campaign.stellarWalletPublicKey).catch(() => 0)

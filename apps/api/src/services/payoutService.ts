@@ -26,6 +26,13 @@ type PayoutExecutionResult = {
   payoutId: string;
 };
 
+type CampaignRefundResult = {
+  destination: string;
+  amount: number;
+  status: "COMPLETED" | "FAILED" | "SKIPPED";
+  stellarTxHash: string | null;
+};
+
 type ExecutePayoutOptions = {
   allowManualTrigger?: boolean;
 };
@@ -225,7 +232,13 @@ async function executeCampaignPayouts(campaignId: string, options: ExecutePayout
       founderId: true,
       status: true,
       remainingBudget: true,
-      stellarWalletSecretKeyEncrypted: true
+      stellarWalletSecretKeyEncrypted: true,
+      founderWalletAddress: true,
+      founder: {
+        select: {
+          walletAddress: true
+        }
+      }
     }
   });
 
@@ -247,6 +260,7 @@ async function executeCampaignPayouts(campaignId: string, options: ExecutePayout
 
   const sourceSecretKey = decryptSecretKey(campaign.stellarWalletSecretKeyEncrypted);
   const results: PayoutExecutionResult[] = [];
+  let distributedBudget = 0;
 
   for (const entry of allocated) {
     if (!entry.walletAddress) {
@@ -292,6 +306,7 @@ async function executeCampaignPayouts(campaignId: string, options: ExecutePayout
       };
 
       results.push(result);
+      distributedBudget += entry.amount;
       emitPayoutUpdate(campaign.id, result);
     } catch {
       const failedPayout = await createPayoutRecord({
@@ -316,19 +331,55 @@ async function executeCampaignPayouts(campaignId: string, options: ExecutePayout
     }
   }
 
+  let refund: CampaignRefundResult | null = null;
+  const founderWallet = campaign.founder.walletAddress ?? campaign.founderWalletAddress ?? null;
+  const hasPayoutRecipients = allocated.length > 0;
+
+  if (!hasPayoutRecipients && founderWallet && campaignBudget > 0) {
+    try {
+      const txHash = await submitXlmPayment(sourceSecretKey, founderWallet, campaignBudget);
+      distributedBudget += campaignBudget;
+      refund = {
+        destination: founderWallet,
+        amount: campaignBudget,
+        status: "COMPLETED",
+        stellarTxHash: txHash
+      };
+    } catch {
+      refund = {
+        destination: founderWallet,
+        amount: campaignBudget,
+        status: "FAILED",
+        stellarTxHash: null
+      };
+    }
+  } else if (!hasPayoutRecipients && !founderWallet && campaignBudget > 0) {
+    refund = {
+      destination: "",
+      amount: campaignBudget,
+      status: "SKIPPED",
+      stellarTxHash: null
+    };
+  }
+
   await prisma.campaign.update({
     where: {
       id: campaign.id
     },
     data: {
-      remainingBudget: 0,
       status: CampaignStatus.ENDED
     }
   });
 
   return {
     campaignId: campaign.id,
-    distributedBudget: campaignBudget,
+    distributedBudget,
+    refund: refund
+      ? {
+          ...refund,
+          stellarTxUrl: refund.stellarTxHash ? `${STELLAR_EXPERT_BASE_URL}/${refund.stellarTxHash}` : null
+        }
+      : null,
     payouts: results.map((entry) => ({
       ...entry,
       stellarTxUrl: entry.stellarTxHash ? `${STELLAR_EXPERT_BASE_URL}/${entry.stellarTxHash}` : null

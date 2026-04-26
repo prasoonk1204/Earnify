@@ -245,6 +245,11 @@ function CampaignDetailsPage() {
 
   const isFounderView = user?.role === "FOUNDER" && campaign?.founderId === user.id;
   const canSubmitPost = !isFounderView;
+  const flowSteps = [
+    { title: "1. Funded", done: Boolean(campaign?.contractId), detail: "Contract deployed and campaign wallet funded." },
+    { title: "2. Participate", done: (campaign?.stats.postCount ?? 0) > 0, detail: "Creators submit and verify campaign posts." },
+    { title: "3. Settle", done: campaign?.status === "ENDED", detail: "Campaign ends and remaining pool is settled." }
+  ];
 
   useEffect(() => {
     if (!campaignId || !isFounderView) {
@@ -423,19 +428,42 @@ function CampaignDetailsPage() {
         });
       });
 
-      eventSource.addEventListener("done", () => {
+      eventSource.addEventListener("refund", (event) => {
+        try {
+          const data = JSON.parse((event as MessageEvent).data) as {
+            destination: string | null;
+            amountXLM: number;
+            status: "COMPLETED" | "FAILED" | "SKIPPED";
+            txUrl: string | null;
+          };
+          pushToast({
+            type: data.status === "COMPLETED" ? "success" : "warning",
+            title: "Pool settlement",
+            message:
+              data.status === "COMPLETED"
+                ? `Refunded ${data.amountXLM.toFixed(2)} XLM to founder wallet.`
+                : "Pool refund could not be completed automatically."
+          });
+        } catch {
+          // ignore malformed stream events
+        }
+      });
+
+      eventSource.addEventListener("done", (event) => {
+        const payload = JSON.parse((event as MessageEvent).data) as { balanceXLM?: number };
         setCampaign((previous) => {
           if (!previous) {
             return previous;
           }
 
+          const balance = Number(payload.balanceXLM ?? 0);
           return {
             ...previous,
             status: "ENDED",
-            remainingBudget: 0,
+            remainingBudget: balance,
             stats: {
               ...previous.stats,
-              remainingBudget: 0
+              remainingBudget: balance
             }
           };
         });
@@ -644,8 +672,8 @@ function CampaignDetailsPage() {
         <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
           
           {/* Hero Section */}
-          <header className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 backdrop-blur-xl p-8 shadow-2xl">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)]"></div>
+          <header className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/70 backdrop-blur-xl p-8 shadow-2xl">
+            <div className="absolute top-0 left-0 h-1 w-full bg-[var(--color-secondary)]"></div>
             
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 relative z-10">
               <div className="space-y-4 max-w-3xl">
@@ -663,7 +691,7 @@ function CampaignDetailsPage() {
                 <p className="text-lg leading-relaxed text-[var(--color-muted)]">{campaign.description}</p>
                 
                 <div className="flex items-center gap-3 pt-2">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center text-white font-bold">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-primary)] text-white font-bold">
                     F
                   </div>
                   <div>
@@ -714,12 +742,28 @@ function CampaignDetailsPage() {
             </div>
           </header>
 
+          <section className="grid gap-3 md:grid-cols-3">
+            {flowSteps.map((step) => (
+              <article
+                key={step.title}
+                className={`rounded-xl border p-4 ${
+                  step.done
+                    ? "border-[var(--color-success)]/40 bg-[var(--color-success)]/10"
+                    : "border-[var(--color-border)] bg-[var(--color-surface)]/35"
+                }`}
+              >
+                <p className="text-sm font-semibold text-white">{step.title}</p>
+                <p className="mt-1 text-xs text-[var(--color-muted)]">{step.detail}</p>
+              </article>
+            ))}
+          </section>
+
           {isFounderView ? (
             <section className="rounded-2xl border border-[var(--color-primary)]/30 bg-[#0D0F14] p-6 md:p-8 shadow-lg">
               <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                 <div>
                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <span className="text-[var(--color-primary)]">✦</span> {campaign.contractId ? "Founder Payout Console" : "Campaign Deployment Console"}
+                    {campaign.contractId ? "Founder Payout Console" : "Campaign Deployment Console"}
                   </h2>
                   <p className="text-sm text-[var(--color-muted)] mt-1">
                     {campaign.contractId 
@@ -732,7 +776,7 @@ function CampaignDetailsPage() {
                     type="button"
                     onClick={() => setShowPayoutConfirm(true)}
                     disabled={triggeringPayout || payoutStreaming}
-                    className="rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] px-6 py-2.5 text-sm font-semibold text-white shadow-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
+                    className="rounded-full bg-[var(--color-primary)] px-6 py-2.5 text-sm font-semibold text-white shadow-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
                   >
                     {triggeringPayout || payoutStreaming ? "Processing..." : "End Campaign & Distribute"}
                   </button>
@@ -837,14 +881,14 @@ function CampaignDetailsPage() {
           <div className="flex gap-4 border-b border-[var(--color-border)] pb-px">
             <button
               onClick={() => setActiveTab("leaderboard")}
-              className={`pb-4 px-2 text-sm font-semibold transition-colors border-b-2 ${activeTab === "leaderboard" ? "border-[var(--color-primary)] text-[var(--color-primary)]" : "border-transparent text-[var(--color-muted)] hover:text-white"}`}
+              className={`pb-4 px-2 text-sm font-semibold transition-colors border-b-2 ${activeTab === "leaderboard" ? "border-[var(--color-secondary)] text-[var(--color-secondary)]" : "border-transparent text-[var(--color-muted)] hover:text-white"}`}
             >
               Leaderboard
             </button>
             {canSubmitPost ? (
               <button
                 onClick={() => setActiveTab("submit")}
-                className={`pb-4 px-2 text-sm font-semibold transition-colors border-b-2 ${activeTab === "submit" ? "border-[var(--color-primary)] text-[var(--color-primary)]" : "border-transparent text-[var(--color-muted)] hover:text-white"}`}
+                className={`pb-4 px-2 text-sm font-semibold transition-colors border-b-2 ${activeTab === "submit" ? "border-[var(--color-secondary)] text-[var(--color-secondary)]" : "border-transparent text-[var(--color-muted)] hover:text-white"}`}
               >
                 Submit Post
               </button>
@@ -905,7 +949,7 @@ function CampaignDetailsPage() {
                   <button
                     type="submit"
                     disabled={submissionPhase === "submitting" || submissionPhase === "pending"}
-                    className="w-full rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] px-6 py-4 text-sm font-bold text-white shadow-lg hover:opacity-90 disabled:opacity-50 transition-all"
+                    className="w-full rounded-full bg-[var(--color-secondary)] px-6 py-4 text-sm font-bold text-white shadow-lg hover:opacity-90 disabled:opacity-50 transition-all"
                   >
                     {submissionPhase === "submitting" || submissionPhase === "pending" ? "Verifying..." : "Submit Post for Verification"}
                   </button>

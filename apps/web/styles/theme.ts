@@ -1,18 +1,18 @@
 export const theme = {
   colors: {
-    primary: "#6366F1", // Electric Indigo
-    secondary: "#10B981", // Emerald Green
-    accent: "#8B5CF6", // Purple accent
+    primary: "#F97352", // Warm coral
+    secondary: "#0EA5A4", // Teal
+    accent: "#F59E0B", // Amber
     danger: "#EF4444",
-    success: "#10B981",
-    muted: "#9CA3AF",
-    background: "#0D0F14", // Deep navy/charcoal base
-    surface: "#1A1D27", // Slightly lighter for cards
-    border: "#2A2D3A" // Subtle borders
+    success: "#22C55E",
+    muted: "#9AA4B2",
+    background: "#0B1220", // Deep navy base
+    surface: "#121A2B", // Elevated card surface
+    border: "#22304A" // Cool slate border
   },
   typography: {
     fonts: {
-      sans: "\"Sora\", \"Segoe UI\", sans-serif"
+      sans: "\"Space Grotesk\", \"Sora\", \"Segoe UI\", sans-serif"
     },
     fontSizes: {
       xs: "0.75rem",

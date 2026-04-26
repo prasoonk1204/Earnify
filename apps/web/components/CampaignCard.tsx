@@ -22,7 +22,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
   const percentRemaining = Math.max(0, Math.min(100, (campaign.budgetRemaining / campaign.budgetTotal) * 100));
 
   return (
-    <article className="group relative flex h-full flex-col justify-between gap-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/40 p-6 backdrop-blur-md transition-all duration-300 hover:border-[var(--color-primary)]/50 hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.2)]">
+    <article className="group relative flex h-full flex-col justify-between gap-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/60 p-6 backdrop-blur-md transition-all duration-300 hover:border-[var(--color-secondary)]/50 hover:shadow-[0_0_28px_-8px_rgba(14,165,164,0.45)]">
       <div>
         <div className="flex items-start justify-between gap-4 mb-4">
           <h3 className="text-xl font-semibold text-white leading-tight line-clamp-2">
@@ -38,7 +38,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
         </div>
 
         <div className="flex items-center gap-3 mb-6">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center text-white font-bold text-sm">
+          <div className="h-8 w-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold text-sm">
             {campaign.founder.name.charAt(0)}
           </div>
           <p className="text-sm text-[var(--color-muted)]">by <span className="font-medium text-[#e2e8f0]">{campaign.founder.name}</span></p>
@@ -52,7 +52,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           {/* Mini progress bar */}
           <div className="h-2 w-full overflow-hidden rounded-full bg-[#0D0F14] border border-[var(--color-border)]">
             <div 
-              className="h-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] rounded-full transition-all duration-500" 
+              className="h-full rounded-full bg-[var(--color-secondary)] transition-all duration-500" 
               style={{ width: `${percentRemaining}%` }}
             />
           </div>

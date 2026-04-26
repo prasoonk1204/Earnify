@@ -139,7 +139,8 @@ async function refreshLeaderboard(campaignId: string): Promise<void> {
         views: engagement?.views ?? 0,
         likes: engagement?.likes ?? 0,
         shares: engagement?.shares ?? 0,
-        comments: engagement?.comments ?? 0
+        comments: engagement?.comments ?? 0,
+        authenticityScore: post.authenticityScore
       });
 
       await prisma.score.upsert({

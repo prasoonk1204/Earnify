@@ -61,7 +61,7 @@ function getPodiumRowStyle(rank: number) {
 }
 
 function formatScore(score: number) {
-  return score.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  return score.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 function formatEarnings(xlm: number) {
