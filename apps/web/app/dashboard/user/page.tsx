@@ -54,7 +54,18 @@ type DashboardCampaign = {
   remainingBudget: number;
   status: CampaignStatus;
   postCount: number;
+  platforms: string[];
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string;
+  founder?: {
+    id: string;
+    name: string;
+    avatar?: string | null;
+  };
 };
+
+type CampaignSegment = "live" | "upcoming" | "ended";
 
 function hashUserId(userId: string) {
   let hash = 0;
@@ -66,10 +77,28 @@ function hashUserId(userId: string) {
   return hash;
 }
 
+function classifyCampaignSegment(campaign: DashboardCampaign): CampaignSegment {
+  const now = Date.now();
+  const endTime = campaign.endDate ? new Date(campaign.endDate).getTime() : Number.POSITIVE_INFINITY;
+  const startTime = campaign.startDate ? new Date(campaign.startDate).getTime() : Number.NEGATIVE_INFINITY;
+
+  const endedByDate = Number.isFinite(endTime) && endTime <= now;
+
+  if (campaign.status === "ENDED" || campaign.status === "COMPLETED" || endedByDate) {
+    return "ended";
+  }
+
+  if (campaign.status === "ACTIVE" && startTime <= now) {
+    return "live";
+  }
+
+  return "upcoming";
+}
+
 function DashboardPage() {
   const { user, switchRole } = useAuth();
   const { pushToast } = useToast();
-  const { walletAddress: freighterAddress, isConnected: walletConnected } = useWallet();
+  const { walletAddress: freighterAddress } = useWallet();
 
   const [campaigns, setCampaigns] = useState<DashboardCampaign[]>([]);
   const [earnings, setEarnings] = useState<MyEarningsCampaign[]>([]);
@@ -85,15 +114,16 @@ function DashboardPage() {
   const [campaignError, setCampaignError] = useState<string | null>(null);
   const [earningsError, setEarningsError] = useState<string | null>(null);
   const [payoutError, setPayoutError] = useState<string | null>(null);
+  const [campaignTab, setCampaignTab] = useState<CampaignSegment>("live");
 
   const seenCompletedPayoutsRef = useRef<Set<string>>(new Set());
 
-  // The effective wallet address: prefer Freighter (live), fall back to DB value
   const effectiveWalletAddress = freighterAddress ?? payoutHistory?.walletAddress ?? null;
 
   useEffect(() => {
     const fetchCampaigns = async () => {
       setLoadingCampaigns(true);
+      setCampaignError(null);
 
       try {
         const response = await fetch(`${apiBaseUrl}/api/campaigns`, {
@@ -217,11 +247,7 @@ function DashboardPage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(
-          effectiveWalletAddress
-            ? { walletAddress: effectiveWalletAddress }
-            : {}
-        )
+        body: JSON.stringify(effectiveWalletAddress ? { walletAddress: effectiveWalletAddress } : {})
       });
 
       const payload = (await response.json()) as ApiResponse<{
@@ -284,18 +310,7 @@ function DashboardPage() {
     maximumFractionDigits: 2
   });
 
-  const timestampFormatter = new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  });
-
   const formatXlm = (value: number) => currencyFormatter.format(value);
-
-  const formatTimestamp = (value: string) => {
-    const parsed = new Date(value);
-
-    return Number.isNaN(parsed.getTime()) ? value : timestampFormatter.format(parsed);
-  };
 
   const profileBadges = useMemo(() => {
     const campaignCount = earnings.filter((entry) => entry.posts > 0).length;
@@ -310,9 +325,27 @@ function DashboardPage() {
     });
   }, [earnings, user?.id]);
 
+  const segmentedCampaigns = useMemo(() => {
+    const live: DashboardCampaign[] = [];
+    const upcoming: DashboardCampaign[] = [];
+    const ended: DashboardCampaign[] = [];
+
+    for (const campaign of campaigns) {
+      const segment = classifyCampaignSegment(campaign);
+      if (segment === "live") live.push(campaign);
+      if (segment === "upcoming") upcoming.push(campaign);
+      if (segment === "ended") ended.push(campaign);
+    }
+
+    return { live, upcoming, ended };
+  }, [campaigns]);
+
+  const campaignItems = segmentedCampaigns[campaignTab];
+
   const handleSwitchRole = async (nextRole: "FOUNDER" | "USER") => {
     setSwitchingRole(true);
     const ok = await switchRole(nextRole);
+
     if (!ok) {
       pushToast({
         type: "warning",
@@ -327,67 +360,62 @@ function DashboardPage() {
       });
       window.location.href = "/dashboard";
     }
+
     setSwitchingRole(false);
   };
 
   return (
-    <main className="min-h-screen bg-[var(--color-background)] text-[#e2e8f0] pb-20">
-      <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-        
-        {/* Header */}
-        <header className="mb-10 text-center md:text-left">
-          <p className="text-sm font-semibold uppercase tracking-wider text-[var(--color-primary)]">Campaign Dashboard</p>
-          <h1 className="mt-2 text-3xl font-bold text-white sm:text-4xl">Creator dashboard</h1>
-          <p className="mt-4 max-w-2xl text-lg text-[var(--color-muted)]">
-            Join campaigns, submit high-performing content, and climb the leaderboard to earn payout allocation.
+    <main className="min-h-screen pb-16">
+      <section className="mx-auto w-full max-w-7xl space-y-7 px-4 py-8 sm:px-6 lg:px-8">
+        <header className="surface-card rounded-sm p-6 sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-primary)]">Creator Dashboard</p>
+          <h1 className="mt-3 text-3xl font-semibold text-zinc-100">Campaign performance and payouts</h1>
+          <p className="mt-3 max-w-3xl text-sm text-zinc-400">
+            Campaigns are separated by live, upcoming, and ended states to keep your workflow focused.
           </p>
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            {user?.role === "USER" ? (
-              <button
-                type="button"
-                disabled={switchingRole}
-                onClick={() => {
-                  void handleSwitchRole("FOUNDER");
-                }}
-                className="rounded-full border border-[var(--color-primary)]/50 px-4 py-2 text-sm font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 disabled:opacity-60"
-              >
-                {switchingRole ? "Switching..." : "Switch to Founder"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={switchingRole}
-                onClick={() => {
-                  void handleSwitchRole("USER");
-                }}
-                className="rounded-full border border-[var(--color-secondary)]/50 px-4 py-2 text-sm font-semibold text-[var(--color-secondary)] hover:bg-[var(--color-secondary)]/10 disabled:opacity-60"
-              >
-                {switchingRole ? "Switching..." : "Switch to User"}
-              </button>
-            )}
+          <div className="mt-6">
+            <button
+              type="button"
+              disabled={switchingRole}
+              onClick={() => {
+                void handleSwitchRole("FOUNDER");
+              }}
+              className="inline-flex items-center border border-[var(--color-primary)] px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/12 disabled:opacity-60"
+            >
+              {switchingRole ? "Switching..." : "Switch to Founder"}
+            </button>
           </div>
         </header>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_350px]">
-          
-          {/* Main Content (Campaigns) */}
-          <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold text-white">Live Campaigns</h2>
+        <div className="grid gap-7 lg:grid-cols-[1fr_370px]">
+          <section className="space-y-5">
+            <div className="surface-card rounded-sm p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                {(["live", "upcoming", "ended"] as CampaignSegment[]).map((segment) => (
+                  <button
+                    key={segment}
+                    type="button"
+                    onClick={() => setCampaignTab(segment)}
+                    className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.09em] ${
+                      campaignTab === segment
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-black"
+                        : "border-zinc-700 text-zinc-300"
+                    }`}
+                  >
+                    {segment} ({segmentedCampaigns[segment].length})
+                  </button>
+                ))}
+              </div>
             </div>
-            
+
             {loadingCampaigns ? (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 {Array.from({ length: 4 }).map((_, index) => (
-                  <div key={`campaign-skeleton-${index}`} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-6">
-                    <Skeleton className="h-6 w-2/3 rounded-md bg-[#2A2D3A]" />
-                    <Skeleton className="mt-4 h-4 w-full rounded-md bg-[#2A2D3A]" />
-                    <Skeleton className="mt-2 h-4 w-5/6 rounded-md bg-[#2A2D3A]" />
-                    <Skeleton className="mt-6 h-3 w-full rounded-full bg-[#2A2D3A]" />
-                    <div className="mt-6 flex justify-between">
-                      <Skeleton className="h-8 w-16 rounded-md bg-[#2A2D3A]" />
-                      <Skeleton className="h-8 w-24 rounded-full bg-[#2A2D3A]" />
-                    </div>
+                  <div key={`dashboard-campaign-skeleton-${index}`} className="surface-card rounded-sm p-6">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="mt-3 h-6 w-3/4" />
+                    <Skeleton className="mt-4 h-4 w-full" />
+                    <Skeleton className="mt-7 h-10 w-full" />
                   </div>
                 ))}
               </div>
@@ -395,164 +423,166 @@ function DashboardPage() {
 
             {campaignError ? <p className="text-sm text-[var(--color-danger)]">{campaignError}</p> : null}
 
-            {!loadingCampaigns && !campaignError && campaigns.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {campaigns.map((campaign) => (
+            {!loadingCampaigns && !campaignError && campaignItems.length > 0 ? (
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {campaignItems.map((campaign) => (
                   <CampaignCard
                     key={campaign.id}
                     campaign={{
                       id: campaign.id,
                       title: campaign.title,
                       description: campaign.description,
+                      founder: campaign.founder,
+                      platforms: campaign.platforms,
                       budgetTotal: campaign.totalBudget,
                       budgetRemaining: campaign.remainingBudget,
                       participants: campaign.postCount,
-                      founder: { name: "Stellar Dev", avatar: "" },
-                      platforms: ["X", "LinkedIn", "Instagram"],
-                      daysLeft: 7
+                      status: campaign.status,
+                      endDate: campaign.endDate,
+                      startDate: campaign.startDate,
+                      createdAt: campaign.createdAt
                     }}
                   />
                 ))}
               </div>
             ) : null}
 
-            {!loadingCampaigns && !campaignError && campaigns.length === 0 ? (
+            {!loadingCampaigns && !campaignError && campaignItems.length === 0 ? (
               <EmptyState
                 variant="campaigns"
-                title="No campaigns yet"
-                description="Campaigns will appear here as soon as founders launch them."
+                title={`No ${campaignTab} campaigns`}
+                description="Campaigns will appear here automatically based on real-time status."
               />
             ) : null}
-          </div>
+          </section>
 
-          {/* Sidebar (Earnings & Payouts) */}
-          {user?.role === "USER" ? (
-            <aside className="space-y-6">
-              
-              {/* Earnings Card */}
-              <div className="rounded-2xl border border-[var(--color-secondary)]/30 bg-gradient-to-b from-[var(--color-surface)] to-[var(--color-background)] p-6 shadow-[0_0_40px_-10px_rgba(16,185,129,0.15)]">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold text-white">Estimated Earnings</h2>
-                  <span className="text-xs text-[var(--color-muted)]">Final payout on end</span>
-                </div>
-
-                <div className="text-4xl font-extrabold text-[var(--color-secondary)] mb-6">
-                  {formatXlm(earnings.reduce((sum, entry) => sum + entry.estimatedPayout, 0))} <span className="text-xl">XLM</span>
-                </div>
-
-                {loadingEarnings ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-10 w-full rounded-md bg-[#2A2D3A]" />
-                    <Skeleton className="h-10 w-full rounded-md bg-[#2A2D3A]" />
-                  </div>
-                ) : earningsError ? (
-                  <p className="text-sm text-[var(--color-danger)]">{earningsError}</p>
-                ) : earnings.length === 0 ? (
-                  <p className="text-sm text-[var(--color-muted)] text-center py-4">No verified earnings yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {earnings.map((entry) => (
-                      <div key={entry.campaignId} className="flex justify-between items-center rounded-lg bg-[var(--color-surface)] p-3 border border-[var(--color-border)]">
-                        <div className="truncate pr-4">
-                          <p className="text-sm font-semibold text-white truncate">{entry.campaignTitle}</p>
-                          <p className="text-xs text-[var(--color-muted)]">{entry.posts} posts • {entry.currentScore.toFixed(1)} score</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-bold text-[var(--color-secondary)]">+{formatXlm(entry.estimatedPayout)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+          <aside className="space-y-5">
+            <section className="surface-card rounded-sm p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-zinc-300">Estimated Earnings</h2>
+                <span className="text-xs text-zinc-500">Live</span>
               </div>
 
-              {/* Profile Badges */}
-              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-6">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-muted)] mb-4">Profile Badges</h3>
-                {profileBadges.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {profileBadges.map((badge) => (
-                      <Badge key={`profile-${badge}`} badge={badge} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-[var(--color-muted)]">Complete campaigns to unlock badges.</p>
-                )}
-              </div>
+              <p className="text-3xl font-semibold text-[var(--color-primary)]">
+                {formatXlm(earnings.reduce((sum, entry) => sum + entry.estimatedPayout, 0))} XLM
+              </p>
 
-              {/* Payout History */}
-              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-muted)]">Payout History</h3>
+              {loadingEarnings ? (
+                <div className="mt-4 space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
-
-                <div className="mb-6 rounded-xl border border-[var(--color-border)] bg-[#0D0F14] p-4">
-                  {!effectiveWalletAddress ? (
-                    <div className="text-center">
-                      <p className="text-xs text-[var(--color-muted)] mb-3">Connect wallet to receive payouts</p>
-                      <ConnectWalletButton />
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2 text-center">
-                      <p className="text-xs text-[var(--color-muted)]">Connected Wallet</p>
-                      <p className="text-sm font-mono text-[var(--color-primary)]">
-                        {effectiveWalletAddress.slice(0, 6)}...{effectiveWalletAddress.slice(-6)}
+              ) : earningsError ? (
+                <p className="mt-4 text-sm text-[var(--color-danger)]">{earningsError}</p>
+              ) : earnings.length === 0 ? (
+                <p className="mt-4 text-sm text-zinc-500">No verified earnings yet.</p>
+              ) : (
+                <div className="mt-4 space-y-2">
+                  {earnings.slice(0, 5).map((entry) => (
+                    <div key={entry.campaignId} className="border border-zinc-800 bg-black/25 p-3">
+                      <p className="truncate text-sm font-medium text-zinc-100">{entry.campaignTitle}</p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {entry.posts} posts • {entry.currentScore.toFixed(1)} score
                       </p>
-                      <div className="mt-2 mx-auto">
-                        <ConnectWalletButton />
-                      </div>
+                      <p className="mt-1 text-sm font-semibold text-[var(--color-primary)]">+{formatXlm(entry.estimatedPayout)} XLM</p>
                     </div>
-                  )}
+                  ))}
                 </div>
+              )}
+            </section>
 
-                {loadingPayoutHistory ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-14 w-full rounded-lg bg-[#2A2D3A]" />
-                    <Skeleton className="h-14 w-full rounded-lg bg-[#2A2D3A]" />
+            <section className="surface-card rounded-sm p-5">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-zinc-300">Profile Badges</h3>
+              {profileBadges.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {profileBadges.map((badge) => (
+                    <Badge key={`profile-${badge}`} badge={badge} />
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-zinc-500">Complete campaigns to unlock badges.</p>
+              )}
+            </section>
+
+            <section className="surface-card rounded-sm p-5">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-zinc-300">Payouts</h3>
+
+              <div className="mt-4 border border-zinc-800 bg-black/40 p-4">
+                {!effectiveWalletAddress ? (
+                  <div className="space-y-3 text-center">
+                    <p className="text-xs text-zinc-500">Connect wallet to receive payouts</p>
+                    <ConnectWalletButton />
                   </div>
-                ) : payoutError ? (
-                  <p className="text-sm text-[var(--color-danger)]">{payoutError}</p>
-                ) : !payoutHistory || payoutHistory.payouts.length === 0 ? (
-                  <p className="text-sm text-[var(--color-muted)] text-center">No payouts yet.</p>
                 ) : (
-                  <div className="space-y-3">
-                    {payoutHistory.payouts.slice(0, 5).map((payout) => (
-                      <div key={payout.id} className="flex justify-between items-center rounded-lg border border-[var(--color-border)] bg-[#0D0F14] p-3">
-                        <div className="truncate pr-2">
-                          <p className="text-xs font-semibold text-white truncate">{payout.campaignTitle}</p>
-                          <p className="text-xs font-mono text-[var(--color-secondary)]">{formatXlm(payout.amount)} XLM</p>
-                        </div>
-                        
-                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${payout.status === 'COMPLETED' ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : payout.status === 'FAILED' ? 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]' : 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'}`}>
-                            {payout.status}
-                          </span>
-                          
+                  <div className="space-y-3 text-center">
+                    <p className="text-xs text-zinc-500">Connected Wallet</p>
+                    <p className="text-xs font-mono text-[var(--color-primary)]">
+                      {effectiveWalletAddress.slice(0, 6)}...{effectiveWalletAddress.slice(-6)}
+                    </p>
+                    <ConnectWalletButton />
+                  </div>
+                )}
+              </div>
+
+              {loadingPayoutHistory ? (
+                <div className="mt-4 space-y-2">
+                  <Skeleton className="h-14 w-full" />
+                  <Skeleton className="h-14 w-full" />
+                </div>
+              ) : payoutError ? (
+                <p className="mt-4 text-sm text-[var(--color-danger)]">{payoutError}</p>
+              ) : !payoutHistory || payoutHistory.payouts.length === 0 ? (
+                <p className="mt-4 text-sm text-zinc-500">No payouts yet.</p>
+              ) : (
+                <div className="mt-4 space-y-2">
+                  {payoutHistory.payouts.slice(0, 6).map((payout) => (
+                    <div key={payout.id} className="border border-zinc-800 bg-black/35 p-3">
+                      <p className="truncate text-xs font-semibold uppercase tracking-[0.08em] text-zinc-300">{payout.campaignTitle}</p>
+                      <p className="mt-1 text-sm font-semibold text-zinc-100">{formatXlm(payout.amount)} XLM</p>
+
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <span
+                          className={`border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] ${
+                            payout.status === "COMPLETED"
+                              ? "border-zinc-500 text-zinc-100"
+                              : payout.status === "FAILED"
+                                ? "border-red-400/45 text-red-300"
+                                : "border-[var(--color-primary)]/50 text-[var(--color-primary)]"
+                          }`}
+                        >
+                          {payout.status}
+                        </span>
+
+                        <div className="flex items-center gap-2">
                           {(payout.status === "PENDING" || payout.status === "FAILED") && (
                             <button
                               type="button"
                               onClick={() => claimPayout(payout.campaignId, payout.id)}
                               disabled={claimingPayoutId === payout.id || !effectiveWalletAddress}
-                              className="text-[10px] bg-[var(--color-primary)] text-white px-2 py-0.5 rounded hover:bg-opacity-80 disabled:opacity-50"
+                              className="border border-[var(--color-primary)] bg-[var(--color-primary)] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-black disabled:opacity-50"
                             >
                               {claimingPayoutId === payout.id ? "..." : payout.status === "FAILED" ? "Retry" : "Claim"}
                             </button>
                           )}
-                          
-                          {payout.stellarTxUrl && (
-                            <a href={payout.stellarTxUrl} target="_blank" rel="noreferrer" className="text-[10px] text-[var(--color-primary)] hover:underline">
-                              Tx ↗
+
+                          {payout.stellarTxUrl ? (
+                            <a
+                              href={payout.stellarTxUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-primary)]"
+                            >
+                              Tx
                             </a>
-                          )}
+                          ) : null}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </aside>
-          ) : null}
-          
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </aside>
         </div>
       </section>
     </main>

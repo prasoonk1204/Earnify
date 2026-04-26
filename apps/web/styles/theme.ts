@@ -1,18 +1,18 @@
 export const theme = {
   colors: {
-    primary: "#F97352", // Warm coral
-    secondary: "#0EA5A4", // Teal
-    accent: "#F59E0B", // Amber
+    primary: "#F59E0B", // Amber accent for CTAs/highlights
+    secondary: "#D4A43A", // Subtle amber tint
+    accent: "#FBBF24", // Bright amber highlight
     danger: "#EF4444",
-    success: "#22C55E",
-    muted: "#9AA4B2",
-    background: "#0B1220", // Deep navy base
-    surface: "#121A2B", // Elevated card surface
-    border: "#22304A" // Cool slate border
+    success: "#A3A3A3",
+    muted: "#A3A3A3",
+    background: "#080808", // Neutral black
+    surface: "#141414", // Elevated neutral surface
+    border: "#2B2B2B" // Neutral border
   },
   typography: {
     fonts: {
-      sans: "\"Space Grotesk\", \"Sora\", \"Segoe UI\", sans-serif"
+      sans: "\"Manrope\", \"Space Grotesk\", \"Segoe UI\", sans-serif"
     },
     fontSizes: {
       xs: "0.75rem",

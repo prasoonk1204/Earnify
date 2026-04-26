@@ -25,38 +25,38 @@ const badgeMeta: Record<
 > = {
   "Top Performer": {
     label: "Top Performer",
-    icon: "🔥",
-    textColor: "text-[#F59E0B]", // amber
-    background: "bg-[#F59E0B]/10",
-    glowColor: "shadow-[0_0_10px_-2px_rgba(245,158,11,0.3)]",
+    icon: "TP",
+    textColor: "text-[var(--color-primary)]",
+    background: "bg-[var(--color-primary)]/14 border border-[var(--color-primary)]/30",
+    glowColor: "shadow-[0_0_14px_-8px_rgba(245,158,11,0.9)]"
   },
   "Verified Creator": {
     label: "Verified Creator",
-    icon: "✔",
-    textColor: "text-[#10B981]", // success
-    background: "bg-[#10B981]/10",
-    glowColor: "shadow-[0_0_10px_-2px_rgba(16,185,129,0.3)]",
+    icon: "VC",
+    textColor: "text-zinc-100",
+    background: "bg-zinc-700/30 border border-zinc-600",
+    glowColor: ""
   },
   "Viral Post": {
     label: "Viral Post",
-    icon: "🚀",
-    textColor: "text-[#6366F1]", // primary
-    background: "bg-[#6366F1]/10",
-    glowColor: "shadow-[0_0_10px_-2px_rgba(99,102,241,0.3)]",
+    icon: "VP",
+    textColor: "text-zinc-100",
+    background: "bg-zinc-700/30 border border-zinc-600",
+    glowColor: ""
   },
   "5-Campaign Pro": {
     label: "5-Campaign Pro",
-    icon: "🏆",
-    textColor: "text-[#8B5CF6]", // purple
-    background: "bg-[#8B5CF6]/10",
-    glowColor: "shadow-[0_0_10px_-2px_rgba(139,92,246,0.3)]",
+    icon: "5P",
+    textColor: "text-zinc-100",
+    background: "bg-zinc-700/30 border border-zinc-600",
+    glowColor: ""
   },
   "Early Adopter": {
     label: "Early Adopter",
-    icon: "⭐",
-    textColor: "text-[#94A3B8]", // muted
-    background: "bg-[#94A3B8]/10",
-    glowColor: "",
+    icon: "EA",
+    textColor: "text-zinc-300",
+    background: "bg-zinc-800/35 border border-zinc-700",
+    glowColor: ""
   }
 };
 
@@ -92,7 +92,7 @@ function Badge({ badge, compact = false }: BadgeProps) {
   return (
     <span
       title={meta.label}
-      className={`inline-flex items-center gap-1.5 rounded-full font-bold ${meta.background} ${meta.textColor} ${meta.glowColor} ${
+      className={`inline-flex items-center gap-1.5 font-bold ${meta.background} ${meta.textColor} ${meta.glowColor} ${
         compact ? "px-2 py-0.5 text-[10px]" : "px-3 py-1.5 text-xs"
       }`}
     >

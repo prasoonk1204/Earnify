@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useMemo, useState } from "react";
+import type { Route } from "next";
+
 import { useAuth } from "./auth/useAuth";
 import { ConnectWalletButton } from "./wallet/ConnectWalletButton";
 
@@ -10,106 +13,170 @@ type NavbarProps = {
   isDarkMode?: boolean;
 };
 
+type NavItem = {
+  href: string;
+  label: string;
+  requiresAuth?: boolean;
+};
+
+const navItems: NavItem[] = [
+  { href: "/", label: "Home" },
+  { href: "/dashboard", label: "Dashboard", requiresAuth: true }
+];
+
+function isActivePath(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname.startsWith(href);
+}
+
 export function Navbar({ onToggleTheme, isDarkMode }: NavbarProps) {
   const { user, isAuthenticated, logout } = useAuth();
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const visibleNav = useMemo(
+    () => navItems.filter((item) => !item.requiresAuth || isAuthenticated),
+    [isAuthenticated]
+  );
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[var(--color-border)] bg-[var(--color-background)]/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        
-        {/* Logo Left */}
-        <div className="flex lg:flex-1">
-          <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
-            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)]">
-              Earnify
-            </span>
-          </Link>
-        </div>
+    <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-black/85 backdrop-blur-xl">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+        <Link href="/" className="inline-flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
+          <span className="inline-flex h-8 w-8 items-center justify-center border border-zinc-700 bg-zinc-900 text-xs font-bold text-[var(--color-primary)]">
+            EF
+          </span>
+          <span className="text-lg font-semibold tracking-[0.08em] text-zinc-100">EARNIFY</span>
+        </Link>
 
-        {/* Nav Links Center */}
-        <div className="hidden lg:flex lg:gap-x-8">
-          <Link href="/dashboard" className="text-sm font-semibold leading-6 text-[#e2e8f0] hover:text-white transition-colors">
-            Dashboard
-          </Link>
-        </div>
+        <nav className="hidden items-center gap-1 lg:flex">
+          {visibleNav.map((item) => {
+            const active = isActivePath(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href as Route}
+                className={`px-3 py-2 text-xs font-semibold uppercase tracking-[0.09em] transition-colors ${
+                  active
+                    ? "bg-zinc-900 text-[var(--color-primary)]"
+                    : "text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
 
-        {/* Auth / Wallet Right */}
-        <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-4">
+        <div className="hidden items-center gap-2 lg:flex">
           {isAuthenticated && user?.role === "FOUNDER" ? (
             <Link
               href="/campaign/create"
-              className="rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+              className="inline-flex items-center justify-center border border-[var(--color-primary)] bg-[var(--color-primary)] px-3 py-2 text-xs font-bold uppercase tracking-[0.09em] text-black hover:bg-[var(--color-accent)]"
             >
-              + Create Campaign
+              New Campaign
             </Link>
           ) : null}
 
           {isAuthenticated ? <ConnectWalletButton /> : null}
 
-          {isAuthenticated ? (
-            <div className="flex items-center gap-3 ml-2 border-l border-[var(--color-border)] pl-4">
-              <span className="text-sm font-medium text-[var(--color-muted)]">
-                {user?.name ?? "User"}
-              </span>
+          {!isAuthenticated ? (
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center border border-zinc-700 px-3 py-2 text-xs font-bold uppercase tracking-[0.09em] text-zinc-200 hover:border-zinc-500 hover:text-white"
+            >
+              Login
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="inline-flex items-center justify-center border border-zinc-700 px-3 py-2 text-xs font-bold uppercase tracking-[0.09em] text-zinc-200 hover:border-zinc-500 hover:text-white"
+            >
+              Logout
+            </button>
+          )}
+
+          {onToggleTheme ? (
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className="inline-flex h-9 w-9 items-center justify-center border border-zinc-700 bg-zinc-900 text-zinc-300 hover:text-white"
+              aria-label="Toggle theme"
+              title="Toggle theme"
+            >
+              {isDarkMode ? "◐" : "◑"}
+            </button>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          className="inline-flex h-10 w-10 items-center justify-center border border-zinc-700 bg-zinc-900 text-zinc-200 lg:hidden"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          aria-expanded={mobileMenuOpen}
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? "×" : "☰"}
+        </button>
+      </div>
+
+      {mobileMenuOpen ? (
+        <div className="border-t border-[var(--color-border)] bg-[#0a0a0a] px-4 py-4 lg:hidden">
+          <nav className="space-y-2">
+            {visibleNav.map((item) => {
+              const active = isActivePath(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href as Route}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block border px-3 py-2 text-xs font-semibold uppercase tracking-[0.09em] ${
+                    active
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)]/15 text-[var(--color-primary)]"
+                      : "border-zinc-800 text-zinc-300"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+
+            {isAuthenticated && user?.role === "FOUNDER" ? (
+              <Link
+                href="/campaign/create"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block border border-[var(--color-primary)] bg-[var(--color-primary)] px-3 py-2 text-xs font-bold uppercase tracking-[0.09em] text-black"
+              >
+                New Campaign
+              </Link>
+            ) : null}
+
+            {!isAuthenticated ? (
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block border border-zinc-700 px-3 py-2 text-xs font-bold uppercase tracking-[0.09em] text-zinc-200"
+              >
+                Login
+              </Link>
+            ) : (
               <button
                 type="button"
-                onClick={() => void logout()}
-                className="text-sm font-semibold leading-6 text-[#e2e8f0] hover:text-white transition-colors"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  void logout();
+                }}
+                className="w-full border border-zinc-700 px-3 py-2 text-left text-xs font-bold uppercase tracking-[0.09em] text-zinc-200"
               >
                 Logout
               </button>
-            </div>
-          ) : (
-            <Link href="/login" className="text-sm font-semibold leading-6 text-[#e2e8f0] hover:text-white">
-              Log in <span aria-hidden="true">&rarr;</span>
-            </Link>
-          )}
-        </div>
+            )}
 
-        {/* Mobile menu button */}
-        <div className="flex lg:hidden">
-          <button
-            type="button"
-            className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-[#e2e8f0]"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            <span className="sr-only">Open main menu</span>
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-          </button>
+            {isAuthenticated ? <ConnectWalletButton /> : null}
+          </nav>
         </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-[var(--color-border)] bg-[var(--color-background)] px-4 py-6 sm:px-6">
-          <div className="space-y-4">
-            <Link href="/dashboard" className="block text-base font-semibold leading-7 text-[#e2e8f0]">Dashboard</Link>
-            
-            <div className="pt-4 border-t border-[var(--color-border)]">
-              {isAuthenticated && user?.role === "FOUNDER" ? (
-                <Link href="/campaign/create" className="block text-base font-semibold leading-7 text-[var(--color-primary)]">
-                  + Create Campaign
-                </Link>
-              ) : null}
-              {isAuthenticated ? (
-                <div className="mt-4 flex flex-col gap-4">
-                  <ConnectWalletButton />
-                  <button onClick={() => void logout()} className="text-left text-base font-semibold leading-7 text-[#e2e8f0]">
-                    Logout
-                  </button>
-                </div>
-              ) : (
-                <Link href="/login" className="block mt-4 text-base font-semibold leading-7 text-[#e2e8f0]">
-                  Log in
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      ) : null}
     </header>
   );
 }

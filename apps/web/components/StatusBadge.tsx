@@ -10,28 +10,28 @@ const statusLabelMap: Record<CampaignStatus, string> = {
 
 const statusStyleMap: Record<CampaignStatus, { text: string; background: string; glow: string }> = {
   DRAFT: {
-    text: "text-[var(--color-accent)]",
-    background: "bg-[var(--color-accent)]/10",
-    glow: "shadow-[0_0_12px_-2px_rgba(6,182,212,0.35)]"
+    text: "text-zinc-300",
+    background: "bg-zinc-700/20",
+    glow: ""
   },
   ACTIVE: {
-    text: "text-[var(--color-success)]",
-    background: "bg-[var(--color-success)]/10",
-    glow: "shadow-[0_0_12px_-2px_rgba(16,185,129,0.4)]"
+    text: "text-[var(--color-primary)]",
+    background: "bg-[var(--color-primary)]/15",
+    glow: "shadow-[0_0_16px_-6px_rgba(245,158,11,0.65)]"
   },
   PAUSED: {
-    text: "text-[#F59E0B]", // amber
-    background: "bg-[#F59E0B]/10",
-    glow: "shadow-[0_0_12px_-2px_rgba(245,158,11,0.4)]"
+    text: "text-zinc-200",
+    background: "bg-zinc-700/25",
+    glow: ""
   },
   COMPLETED: {
-    text: "text-[var(--color-secondary)]",
-    background: "bg-[var(--color-secondary)]/10",
-    glow: "shadow-[0_0_12px_-2px_rgba(16,185,129,0.35)]"
+    text: "text-zinc-100",
+    background: "bg-zinc-700/35",
+    glow: ""
   },
   ENDED: {
-    text: "text-[var(--color-muted)]",
-    background: "bg-[var(--color-surface)]/80",
+    text: "text-zinc-500",
+    background: "bg-zinc-800/70",
     glow: ""
   }
 };
@@ -41,9 +41,9 @@ export function StatusBadge({ status }: { status: CampaignStatus }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest ${styles.text} ${styles.background} ${styles.glow} backdrop-blur-sm`}
+      className={`inline-flex items-center rounded-sm border border-[var(--color-border)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${styles.text} ${styles.background} ${styles.glow}`}
     >
-      {status === "ACTIVE" && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-[var(--color-success)] animate-pulse"></span>}
+      {status === "ACTIVE" && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-[var(--color-primary)] animate-pulse"></span>}
       {statusLabelMap[status]}
     </span>
   );

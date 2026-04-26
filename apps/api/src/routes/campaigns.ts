@@ -355,12 +355,12 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
     const [activeCampaigns, founderCampaigns] = await Promise.all([
       prisma.campaign.findMany({
         where: { status: CampaignStatus.ACTIVE },
-        include: { _count: { select: { posts: true } } },
+        include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } },
         orderBy: { createdAt: "desc" }
       }),
       prisma.campaign.findMany({
         where: { founderId: authenticatedUserId },
-        include: { _count: { select: { posts: true } } },
+        include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } },
         orderBy: { createdAt: "desc" }
       })
     ]);
@@ -389,6 +389,11 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
         remainingBudget: toNumber(campaign.remainingBudget),
         status: campaign.status,
         founderId: campaign.founderId,
+        founder: {
+          id: campaign.founder.id,
+          name: campaign.founder.name,
+          avatar: campaign.founder.avatar
+        },
         founderWalletAddress: campaign.founderWalletAddress,
         contractId: campaign.contractId ?? campaign.stellarContractId,
         endsAt: campaign.endsAt?.toISOString() ?? null,
@@ -407,7 +412,7 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
     const [activeCampaigns, participatedCampaigns] = await Promise.all([
       prisma.campaign.findMany({
         where: { status: CampaignStatus.ACTIVE },
-        include: { _count: { select: { posts: true } } },
+        include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } },
         orderBy: { createdAt: "desc" }
       }),
       prisma.campaign.findMany({
@@ -419,7 +424,7 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
             }
           }
         },
-        include: { _count: { select: { posts: true } } },
+        include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } },
         orderBy: { createdAt: "desc" }
       })
     ]);
@@ -451,6 +456,11 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
         remainingBudget: toNumber(campaign.remainingBudget),
         status: campaign.status,
         founderId: campaign.founderId,
+        founder: {
+          id: campaign.founder.id,
+          name: campaign.founder.name,
+          avatar: campaign.founder.avatar
+        },
         contractId: campaign.contractId ?? campaign.stellarContractId,
         endsAt: campaign.endsAt?.toISOString() ?? null,
         createdAt: campaign.createdAt.toISOString(),
@@ -465,7 +475,7 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
   // Public: only ACTIVE campaigns
   const campaigns = await prisma.campaign.findMany({
     where: { status: CampaignStatus.ACTIVE },
-    include: { _count: { select: { posts: true } } },
+    include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } },
     orderBy: { createdAt: "desc" }
   });
 
@@ -486,6 +496,11 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
       remainingBudget: toNumber(campaign.remainingBudget),
       status: campaign.status,
       founderId: campaign.founderId,
+      founder: {
+        id: campaign.founder.id,
+        name: campaign.founder.name,
+        avatar: campaign.founder.avatar
+      },
       contractId: campaign.contractId ?? campaign.stellarContractId,
       endsAt: campaign.endsAt?.toISOString() ?? null,
       createdAt: campaign.createdAt.toISOString(),
@@ -509,7 +524,7 @@ campaignsRouter.get("/:id", async (request, response) => {
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    include: { _count: { select: { posts: true } } }
+    include: { _count: { select: { posts: true } }, founder: { select: { id: true, name: true, avatar: true } } }
   });
 
   if (!campaign) {
@@ -542,6 +557,11 @@ campaignsRouter.get("/:id", async (request, response) => {
     remainingBudget: toNumber(campaign.remainingBudget),
     status: campaign.status,
     founderId: campaign.founderId,
+    founder: {
+      id: campaign.founder.id,
+      name: campaign.founder.name,
+      avatar: campaign.founder.avatar
+    },
     founderWalletAddress: campaign.founderWalletAddress,
     walletAddress: campaign.stellarWalletPublicKey,
     contractId: campaign.contractId ?? campaign.stellarContractId,

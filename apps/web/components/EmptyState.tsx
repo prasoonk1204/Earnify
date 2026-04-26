@@ -8,13 +8,13 @@ type EmptyStateProps = {
 
 function EmptyState({ title, description, variant }: EmptyStateProps) {
   return (
-    <div className="rounded-2xl border border-white/5 bg-[#0D0F14]/50 backdrop-blur-md p-10 flex flex-col items-center justify-center text-center shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)]">
+    <div className="surface-card rounded-sm p-10 flex flex-col items-center justify-center text-center">
       <div className="mx-auto w-full max-w-[240px] opacity-80 mix-blend-screen">
         <svg viewBox="0 0 260 140" role="img" aria-label={title} className="h-auto w-full">
           <defs>
             <linearGradient id="empty-gradient" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="var(--color-secondary)" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.1" />
             </linearGradient>
             <filter id="glow">
               <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
@@ -51,7 +51,7 @@ function EmptyState({ title, description, variant }: EmptyStateProps) {
           ) : null}
         </svg>
       </div>
-      <p className="mt-6 text-xl font-bold text-white tracking-wide">{title}</p>
+      <p className="mt-6 text-xl font-bold text-[#f5f5f5] tracking-wide">{title}</p>
       <p className="mt-2 text-sm text-[var(--color-muted)] max-w-sm">{description}</p>
     </div>
   );

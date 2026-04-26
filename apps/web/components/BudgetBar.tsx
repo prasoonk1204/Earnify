@@ -16,16 +16,16 @@ export function BudgetBar({ totalBudget, remainingBudget, size = "md" }: BudgetB
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
-        <span className="font-semibold text-white">{remainingBudget.toFixed(2)} XLM left</span>
+        <span className="font-semibold text-[#f5f5f5]">{remainingBudget.toFixed(2)} XLM left</span>
         <span className="font-medium text-[var(--color-muted)]">{totalBudget.toFixed(2)} XLM total</span>
       </div>
 
       <div
-        className="overflow-hidden rounded-full border border-[var(--color-border)]/30 bg-[#0D0F14]/50 backdrop-blur-sm"
+        className="overflow-hidden rounded-sm border border-[var(--color-border)] bg-black/45"
         style={{ height: barHeight }}
       >
         <div
-          className="h-full rounded-full bg-gradient-to-r from-[#10B981] to-[#6366F1] shadow-[0_0_10px_-2px_rgba(99,102,241,0.5)]"
+          className="h-full rounded-sm bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-accent)] shadow-[0_0_20px_-8px_rgba(245,158,11,0.8)]"
           style={{ width: `${spentPercent}%` }}
         />
       </div>

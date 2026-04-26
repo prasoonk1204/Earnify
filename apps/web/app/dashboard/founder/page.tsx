@@ -22,7 +22,34 @@ type DashboardCampaign = {
   status: CampaignStatus;
   postCount: number;
   founderId: string;
+  platforms: string[];
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string;
+  founder?: {
+    id: string;
+    name: string;
+    avatar?: string | null;
+  };
 };
+
+type CampaignSegment = "live" | "upcoming" | "ended";
+
+function classifyCampaignSegment(campaign: DashboardCampaign): CampaignSegment {
+  const now = Date.now();
+  const endTime = campaign.endDate ? new Date(campaign.endDate).getTime() : Number.POSITIVE_INFINITY;
+  const endedByDate = Number.isFinite(endTime) && endTime <= now;
+
+  if (campaign.status === "ENDED" || campaign.status === "COMPLETED" || endedByDate) {
+    return "ended";
+  }
+
+  if (campaign.status === "ACTIVE") {
+    return "live";
+  }
+
+  return "upcoming";
+}
 
 function FounderDashboardPage() {
   const { user, switchRole } = useAuth();
@@ -32,6 +59,7 @@ function FounderDashboardPage() {
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
   const [campaignError, setCampaignError] = useState<string | null>(null);
   const [switchingRole, setSwitchingRole] = useState(false);
+  const [campaignTab, setCampaignTab] = useState<CampaignSegment>("live");
 
   useEffect(() => {
     const fetchCampaigns = async () => {
@@ -66,7 +94,7 @@ function FounderDashboardPage() {
   const stats = useMemo(() => {
     const totalBudget = campaigns.reduce((sum, campaign) => sum + campaign.totalBudget, 0);
     const activeCount = campaigns.filter((campaign) => campaign.status === "ACTIVE").length;
-    const endedCount = campaigns.filter((campaign) => campaign.status === "ENDED").length;
+    const endedCount = campaigns.filter((campaign) => classifyCampaignSegment(campaign) === "ended").length;
     const totalParticipants = campaigns.reduce((sum, campaign) => sum + campaign.postCount, 0);
 
     return {
@@ -75,6 +103,21 @@ function FounderDashboardPage() {
       endedCount,
       totalParticipants
     };
+  }, [campaigns]);
+
+  const segmentedCampaigns = useMemo(() => {
+    const live: DashboardCampaign[] = [];
+    const upcoming: DashboardCampaign[] = [];
+    const ended: DashboardCampaign[] = [];
+
+    for (const campaign of campaigns) {
+      const segment = classifyCampaignSegment(campaign);
+      if (segment === "live") live.push(campaign);
+      if (segment === "upcoming") upcoming.push(campaign);
+      if (segment === "ended") ended.push(campaign);
+    }
+
+    return { live, upcoming, ended };
   }, [campaigns]);
 
   const handleSwitchToUser = async () => {
@@ -100,20 +143,20 @@ function FounderDashboardPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[var(--color-background)] text-[#e2e8f0] pb-20">
-      <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-        <header className="mb-6 text-center md:text-left">
-          <p className="text-sm font-semibold uppercase tracking-wider text-[var(--color-primary)]">Founder Console</p>
-          <h1 className="mt-2 text-3xl font-bold text-white sm:text-4xl">Founder dashboard</h1>
-          <p className="mt-4 max-w-3xl text-lg text-[var(--color-muted)]">
-            Manage your campaigns, end them anytime for testing, and distribute pool shares to participant wallets.
+    <main className="min-h-screen pb-16">
+      <section className="mx-auto w-full max-w-7xl space-y-7 px-4 py-8 sm:px-6 lg:px-8">
+        <header className="surface-card rounded-sm p-6 sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-primary)]">Founder Console</p>
+          <h1 className="mt-3 text-3xl font-semibold text-zinc-100">Manage campaign lifecycle</h1>
+          <p className="mt-3 max-w-3xl text-sm text-zinc-400">
+            Monitor campaign health, separate active and ended initiatives, and keep campaign operations clean.
           </p>
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap gap-2">
             <a
               href="/campaign/create"
-              className="rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+              className="inline-flex items-center border border-[var(--color-primary)] bg-[var(--color-primary)] px-4 py-2 text-xs font-bold uppercase tracking-[0.09em] text-black"
             >
-              + Create Campaign
+              Create Campaign
             </a>
             <button
               type="button"
@@ -121,46 +164,61 @@ function FounderDashboardPage() {
                 void handleSwitchToUser();
               }}
               disabled={switchingRole}
-              className="rounded-full border border-[var(--color-secondary)]/40 px-5 py-2.5 text-sm font-semibold text-[var(--color-secondary)] hover:bg-[var(--color-secondary)]/10 disabled:opacity-60"
+              className="inline-flex items-center border border-zinc-700 px-4 py-2 text-xs font-bold uppercase tracking-[0.09em] text-zinc-200 disabled:opacity-60"
             >
               {switchingRole ? "Switching..." : "Switch to User"}
             </button>
           </div>
         </header>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <article className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-5">
-            <p className="text-xs uppercase tracking-wider text-[var(--color-muted)]">Total Campaigns</p>
-            <p className="mt-2 text-2xl font-bold text-white">{campaigns.length}</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <article className="surface-card rounded-sm p-5">
+            <p className="text-[11px] uppercase tracking-[0.1em] text-zinc-500">Total Campaigns</p>
+            <p className="mt-2 text-2xl font-semibold text-zinc-100">{campaigns.length}</p>
           </article>
-          <article className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-5">
-            <p className="text-xs uppercase tracking-wider text-[var(--color-muted)]">Active</p>
-            <p className="mt-2 text-2xl font-bold text-[var(--color-success)]">{stats.activeCount}</p>
+          <article className="surface-card rounded-sm p-5">
+            <p className="text-[11px] uppercase tracking-[0.1em] text-zinc-500">Live</p>
+            <p className="mt-2 text-2xl font-semibold text-[var(--color-primary)]">{stats.activeCount}</p>
           </article>
-          <article className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-5">
-            <p className="text-xs uppercase tracking-wider text-[var(--color-muted)]">Ended</p>
-            <p className="mt-2 text-2xl font-bold text-white">{stats.endedCount}</p>
+          <article className="surface-card rounded-sm p-5">
+            <p className="text-[11px] uppercase tracking-[0.1em] text-zinc-500">Ended</p>
+            <p className="mt-2 text-2xl font-semibold text-zinc-200">{stats.endedCount}</p>
           </article>
-          <article className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-5">
-            <p className="text-xs uppercase tracking-wider text-[var(--color-muted)]">Total Budget</p>
-            <p className="mt-2 text-2xl font-bold text-[var(--color-primary)]">{stats.totalBudget.toFixed(2)} XLM</p>
+          <article className="surface-card rounded-sm p-5">
+            <p className="text-[11px] uppercase tracking-[0.1em] text-zinc-500">Total Budget</p>
+            <p className="mt-2 text-2xl font-semibold text-zinc-100">{stats.totalBudget.toFixed(2)} XLM</p>
+            <p className="mt-1 text-xs text-zinc-500">Participants: {stats.totalParticipants}</p>
           </article>
         </div>
 
-        <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/30 p-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-white">Your campaigns</h2>
-            <p className="text-xs text-[var(--color-muted)]">Participants joined: {stats.totalParticipants}</p>
+        <section className="space-y-5">
+          <div className="surface-card rounded-sm p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              {(["live", "upcoming", "ended"] as CampaignSegment[]).map((segment) => (
+                <button
+                  key={segment}
+                  type="button"
+                  onClick={() => setCampaignTab(segment)}
+                  className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.09em] ${
+                    campaignTab === segment
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-black"
+                      : "border-zinc-700 text-zinc-300"
+                  }`}
+                >
+                  {segment} ({segmentedCampaigns[segment].length})
+                </button>
+              ))}
+            </div>
           </div>
 
           {loadingCampaigns ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               {Array.from({ length: 4 }).map((_, index) => (
-                <div key={`founder-campaign-skeleton-${index}`} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-6">
-                  <Skeleton className="h-6 w-2/3 rounded-md bg-[#2A2D3A]" />
-                  <Skeleton className="mt-4 h-4 w-full rounded-md bg-[#2A2D3A]" />
-                  <Skeleton className="mt-2 h-4 w-5/6 rounded-md bg-[#2A2D3A]" />
-                  <Skeleton className="mt-6 h-3 w-full rounded-full bg-[#2A2D3A]" />
+                <div key={`founder-campaign-skeleton-${index}`} className="surface-card rounded-sm p-6">
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="mt-3 h-6 w-2/3" />
+                  <Skeleton className="mt-4 h-4 w-full" />
+                  <Skeleton className="mt-7 h-10 w-full" />
                 </div>
               ))}
             </div>
@@ -168,9 +226,9 @@ function FounderDashboardPage() {
 
           {campaignError ? <p className="text-sm text-[var(--color-danger)]">{campaignError}</p> : null}
 
-          {!loadingCampaigns && !campaignError && campaigns.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {campaigns.map((campaign) => (
+          {!loadingCampaigns && !campaignError && segmentedCampaigns[campaignTab].length > 0 ? (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              {segmentedCampaigns[campaignTab].map((campaign) => (
                 <CampaignCard
                   key={campaign.id}
                   campaign={{
@@ -180,20 +238,23 @@ function FounderDashboardPage() {
                     budgetTotal: campaign.totalBudget,
                     budgetRemaining: campaign.remainingBudget,
                     participants: campaign.postCount,
-                    founder: { name: user?.name ?? "Founder", avatar: user?.avatar ?? "" },
-                    platforms: ["X", "LinkedIn", "Instagram"],
-                    daysLeft: 7
+                    founder: campaign.founder,
+                    platforms: campaign.platforms,
+                    status: campaign.status,
+                    endDate: campaign.endDate,
+                    startDate: campaign.startDate,
+                    createdAt: campaign.createdAt
                   }}
                 />
               ))}
             </div>
           ) : null}
 
-          {!loadingCampaigns && !campaignError && campaigns.length === 0 ? (
+          {!loadingCampaigns && !campaignError && segmentedCampaigns[campaignTab].length === 0 ? (
             <EmptyState
               variant="campaigns"
-              title="No campaigns yet"
-              description="Create your first campaign to start collecting participants and payouts."
+              title={`No ${campaignTab} campaigns`}
+              description="Campaigns move between sections automatically based on real backend status."
             />
           ) : null}
         </section>
