@@ -347,8 +347,9 @@ function CampaignDetailsPage() {
       });
 
       const endTxPayload = (await endTxResponse.json()) as ApiResponse<{
-        xdr: string;
+        xdr?: string;
         networkPassphrase: string;
+        alreadyEnded?: boolean;
       }>;
 
       if (!endTxResponse.ok || !endTxPayload.success || !endTxPayload.data) {
@@ -357,32 +358,39 @@ function CampaignDetailsPage() {
         return;
       }
 
-      const freighterSign = await getFreighterSign();
-      if (!freighterSign) {
-        setPayoutError("Freighter extension not available");
-        setPayoutStreaming(false);
-        return;
-      }
-
-      const signResult = await freighterSign(endTxPayload.data.xdr, {
-        networkPassphrase: endTxPayload.data.networkPassphrase
-      });
-      if (signResult.error) {
-        setPayoutError(`Freighter signing failed: ${signResult.error}`);
-        setPayoutStreaming(false);
-        return;
-      }
-
-      const sdk = await import("@stellar/stellar-sdk");
-      const horizon = new sdk.Horizon.Server(HORIZON_URL);
-      const signedTx = sdk.TransactionBuilder.fromXDR(
-        signResult.signedTxXdr,
-        endTxPayload.data.networkPassphrase ?? NETWORK_PASSPHRASE
-      );
-      const submission = await horizon.submitTransaction(signedTx);
-
       const streamUrl = new URL(`${apiBaseUrl}/api/campaigns/${campaignId}/payout`);
-      streamUrl.searchParams.set("endTxHash", submission.hash);
+      if (!endTxPayload.data.alreadyEnded) {
+        if (!endTxPayload.data.xdr) {
+          setPayoutError("Missing end-campaign transaction payload");
+          setPayoutStreaming(false);
+          return;
+        }
+
+        const freighterSign = await getFreighterSign();
+        if (!freighterSign) {
+          setPayoutError("Freighter extension not available");
+          setPayoutStreaming(false);
+          return;
+        }
+
+        const signResult = await freighterSign(endTxPayload.data.xdr, {
+          networkPassphrase: endTxPayload.data.networkPassphrase
+        });
+        if (signResult.error) {
+          setPayoutError(`Freighter signing failed: ${signResult.error}`);
+          setPayoutStreaming(false);
+          return;
+        }
+
+        const sdk = await import("@stellar/stellar-sdk");
+        const horizon = new sdk.Horizon.Server(HORIZON_URL);
+        const signedTx = sdk.TransactionBuilder.fromXDR(
+          signResult.signedTxXdr,
+          endTxPayload.data.networkPassphrase ?? NETWORK_PASSPHRASE
+        );
+        const submission = await horizon.submitTransaction(signedTx);
+        streamUrl.searchParams.set("endTxHash", submission.hash);
+      }
 
       const eventSource = new EventSource(streamUrl.toString(), { withCredentials: true });
       let streamCompleted = false;

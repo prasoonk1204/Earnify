@@ -721,6 +721,7 @@ campaignsRouter.post("/:id/deploy-contract", requireAuth, requireRole("FOUNDER")
       budget: true,
       contractId: true,
       stellarContractId: true,
+      founderWalletAddress: true,
       stellarWalletPublicKey: true,
       stellarWalletSecretKeyEncrypted: true
     }
@@ -777,7 +778,8 @@ campaignsRouter.post("/:id/deploy-contract", requireAuth, requireRole("FOUNDER")
       where: { id: campaign.id },
       data: {
         contractId: result.contractId,
-        stellarContractId: result.contractId
+        stellarContractId: result.contractId,
+        founderWalletAddress: founderPublicKey
       }
     });
 
@@ -819,7 +821,14 @@ campaignsRouter.post("/:id/end-campaign-tx", requireAuth, requireRole("FOUNDER")
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
-    select: { id: true, founderId: true, status: true, contractId: true, stellarContractId: true }
+    select: {
+      id: true,
+      founderId: true,
+      status: true,
+      contractId: true,
+      stellarContractId: true,
+      founderWalletAddress: true
+    }
   });
 
   if (!campaign) {
@@ -838,18 +847,41 @@ campaignsRouter.post("/:id/end-campaign-tx", requireAuth, requireRole("FOUNDER")
     return;
   }
 
-  if (campaign.status !== CampaignStatus.ACTIVE) {
-    sendError(response, "Campaign must be ACTIVE to end on-chain", 400);
+  if (campaign.founderWalletAddress && campaign.founderWalletAddress !== founderPublicKey) {
+    sendError(
+      response,
+      `Connected wallet does not match campaign founder wallet (${campaign.founderWalletAddress.slice(0, 6)}...${campaign.founderWalletAddress.slice(-6)}).`,
+      400
+    );
     return;
   }
 
   try {
+    const onChainInfo = await getCampaignInfo(resolvedContractId);
+    const onChainStatus = String(onChainInfo.status).toUpperCase();
+
+    if (onChainStatus === "ENDED") {
+      sendSuccess(response, {
+        alreadyEnded: true,
+        networkPassphrase: process.env.STELLAR_NETWORK_PASSPHRASE ?? StellarSdk.Networks.TESTNET
+      });
+      return;
+    }
+
+    if (onChainStatus !== "ACTIVE") {
+      sendError(response, `Campaign cannot be ended from on-chain state: ${onChainStatus}`, 400);
+      return;
+    }
+
     const payload = await buildEndCampaignTx({
       founderPublicKey,
       campaignContractId: resolvedContractId
     });
 
-    sendSuccess(response, payload);
+    sendSuccess(response, {
+      ...payload,
+      alreadyEnded: false
+    });
   } catch (error) {
     sendError(response, error instanceof Error ? error.message : "Failed to build end-campaign tx", 500);
   }

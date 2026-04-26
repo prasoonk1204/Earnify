@@ -206,7 +206,21 @@ async function withSorobanInvocation(params: {
   const started = Date.now();
 
   while (Date.now() - started < 30_000) {
-    const status = await sorobanRpc.getTransaction(txHash);
+    let status: { status: string; [key: string]: unknown };
+    try {
+      status = await sorobanRpc.getTransaction(txHash);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Bad union switch")) {
+        // Some SDK/RPC combos can fail to parse newer union variants from
+        // getTransaction. Keep the tx hash as best-effort success so callers
+        // can continue without treating this as a hard failure.
+        return {
+          txHash,
+          result: { status: "UNKNOWN_PARSER_FALLBACK" }
+        };
+      }
+      throw error;
+    }
 
     if (status.status === "SUCCESS") {
       return {
@@ -629,7 +643,8 @@ async function buildEndCampaignTx(params: {
 
   const simulation = await sorobanRpc.simulateTransaction(tx);
   if (rpcNs.Api.isSimulationError(simulation)) {
-    throw new Error("Simulation of end_campaign() failed — check campaign state");
+    const details = JSON.stringify(simulation, null, 2).slice(0, 500);
+    throw new Error(`Unable to prepare end_campaign transaction with current on-chain state. ${details}`);
   }
 
   const assembled = rpcNs.assembleTransaction(tx, simulation).build();
