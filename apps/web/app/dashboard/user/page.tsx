@@ -27,12 +27,14 @@ type MyEarningsCampaign = {
   lastUpdatedAt: string;
 };
 
+type UserPayoutStatus = "PENDING" | "COMPLETED" | "FAILED";
+
 type UserPayoutEntry = {
   id: string;
   campaignId: string;
   campaignTitle: string;
   amount: number;
-  status: "PENDING" | "COMPLETED" | "FAILED";
+  status: UserPayoutStatus;
   stellarTxHash: string | null;
   stellarTxUrl: string | null;
   createdAt: string;
@@ -200,7 +202,7 @@ function DashboardPage() {
     }
   }, [payoutHistory]);
 
-  const claimPendingPayout = async (campaignId: string, payoutId: string) => {
+  const claimPayout = async (campaignId: string, payoutId: string) => {
     if (!user?.id) {
       return;
     }
@@ -211,12 +213,20 @@ function DashboardPage() {
     try {
       const response = await fetch(`${apiBaseUrl}/api/users/${user.id}/payouts/${campaignId}/claim`, {
         method: "POST",
-        credentials: "include"
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(
+          effectiveWalletAddress
+            ? { walletAddress: effectiveWalletAddress }
+            : {}
+        )
       });
 
       const payload = (await response.json()) as ApiResponse<{
         id: string;
-        status: "COMPLETED" | "FAILED";
+        status: UserPayoutStatus;
         stellarTxHash?: string | null;
         stellarTxUrl?: string | null;
       }>;
@@ -518,14 +528,14 @@ function DashboardPage() {
                             {payout.status}
                           </span>
                           
-                          {payout.status === "PENDING" && (
+                          {(payout.status === "PENDING" || payout.status === "FAILED") && (
                             <button
                               type="button"
-                              onClick={() => claimPendingPayout(payout.campaignId, payout.id)}
+                              onClick={() => claimPayout(payout.campaignId, payout.id)}
                               disabled={claimingPayoutId === payout.id || !effectiveWalletAddress}
                               className="text-[10px] bg-[var(--color-primary)] text-white px-2 py-0.5 rounded hover:bg-opacity-80 disabled:opacity-50"
                             >
-                              {claimingPayoutId === payout.id ? "..." : "Claim"}
+                              {claimingPayoutId === payout.id ? "..." : payout.status === "FAILED" ? "Retry" : "Claim"}
                             </button>
                           )}
                           

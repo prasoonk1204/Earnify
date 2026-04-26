@@ -978,18 +978,21 @@ campaignsRouter.get("/:id/payout", requireAuth, requireRole("FOUNDER"), async (r
       });
     }
 
-    const balance = campaign.stellarWalletPublicKey
-      ? await getWalletBalance(campaign.stellarWalletPublicKey).catch(() => 0)
-      : 0;
+    const currentRemainingBudget = toNumber(campaign.remainingBudget);
+    const nextRemainingBudget = Math.max(
+      0,
+      Number((currentRemainingBudget - payoutExecution.distributedBudget).toFixed(7))
+    );
+
     await prisma.campaign.update({
       where: { id: campaign.id },
-      data: { remainingBudget: balance }
+      data: { remainingBudget: nextRemainingBudget }
     });
 
     writeSse(response, "done", {
       campaignId: campaign.id,
       contractId: resolvedContractId,
-      balanceXLM: balance,
+      balanceXLM: nextRemainingBudget,
       distributedBudget: payoutExecution.distributedBudget
     });
   } catch (error) {

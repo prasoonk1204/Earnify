@@ -53,6 +53,45 @@ function roundPayoutAmount(value: number) {
   return Math.max(0, Number(value.toFixed(7)));
 }
 
+function extractHorizonErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return "Unknown payout transfer error";
+  }
+
+  const err = error as Error & {
+    response?: {
+      data?: {
+        detail?: string;
+        extras?: {
+          result_codes?: {
+            transaction?: string;
+            operations?: string[];
+          };
+        };
+      };
+    };
+  };
+
+  const detail = err.response?.data?.detail;
+  const txCode = err.response?.data?.extras?.result_codes?.transaction;
+  const opCodes = err.response?.data?.extras?.result_codes?.operations;
+  const opCodeText = Array.isArray(opCodes) && opCodes.length > 0 ? opCodes.join(",") : null;
+
+  if (detail && txCode && opCodeText) {
+    return `${detail} (tx=${txCode}, op=${opCodeText})`;
+  }
+
+  if (detail && txCode) {
+    return `${detail} (tx=${txCode})`;
+  }
+
+  if (detail) {
+    return detail;
+  }
+
+  return err.message || "Unknown payout transfer error";
+}
+
 async function submitXlmPayment(sourceSecretKey: string, destination: string, amount: number) {
   const sourceKeypair = StellarSdk.Keypair.fromSecret(sourceSecretKey);
   const sourceAccount = await horizon.loadAccount(sourceKeypair.publicKey());
@@ -75,6 +114,12 @@ async function submitXlmPayment(sourceSecretKey: string, destination: string, am
 
   const result = await horizon.submitTransaction(transaction);
   return result.hash;
+}
+
+async function getWalletNativeBalance(publicKey: string): Promise<number> {
+  const account = await horizon.loadAccount(publicKey);
+  const native = account.balances.find((balance: { asset_type: string; balance: string }) => balance.asset_type === "native");
+  return Number(native?.balance ?? "0");
 }
 
 function allocatePayouts(entries: CampaignScoreEntry[], totalBudget: number) {
@@ -255,10 +300,11 @@ async function executeCampaignPayouts(campaignId: string, options: ExecutePayout
   }
 
   const campaignBudget = toNumber(campaign.remainingBudget);
+  const sourceSecretKey = decryptSecretKey(campaign.stellarWalletSecretKeyEncrypted);
+
   const scoreEntries = (await getCampaignScoreEntries(campaign.id)).filter((entry) => entry.userId !== campaign.founderId);
   const allocated = allocatePayouts(scoreEntries, campaignBudget).filter((entry) => entry.amount > 0);
 
-  const sourceSecretKey = decryptSecretKey(campaign.stellarWalletSecretKeyEncrypted);
   const results: PayoutExecutionResult[] = [];
   let distributedBudget = 0;
 
@@ -388,15 +434,7 @@ async function executeCampaignPayouts(campaignId: string, options: ExecutePayout
 }
 
 async function claimPayout(userId: string, campaignId: string) {
-  const pendingPayout = await prisma.payout.findFirst({
-    where: {
-      userId,
-      campaignId,
-      status: "PENDING"
-    },
-    orderBy: {
-      createdAt: "asc"
-    },
+  const payoutSelection = {
     include: {
       campaign: {
         select: {
@@ -409,11 +447,32 @@ async function claimPayout(userId: string, campaignId: string) {
           name: true
         }
       }
+    },
+    orderBy: {
+      createdAt: "asc"
     }
-  });
+  } as const;
+
+  const pendingPayout =
+    (await prisma.payout.findFirst({
+      where: {
+        userId,
+        campaignId,
+        status: "PENDING"
+      },
+      ...payoutSelection
+    })) ??
+    (await prisma.payout.findFirst({
+      where: {
+        userId,
+        campaignId,
+        status: "FAILED"
+      },
+      ...payoutSelection
+    }));
 
   if (!pendingPayout) {
-    throw new Error("No pending payout found");
+    throw new Error("No pending or failed payout found");
   }
 
   if (!pendingPayout.user.walletAddress) {
@@ -460,7 +519,7 @@ async function claimPayout(userId: string, campaignId: string) {
     });
 
     return result;
-  } catch {
+  } catch (error) {
     await prisma.payout.update({
       where: {
         id: pendingPayout.id
@@ -470,7 +529,28 @@ async function claimPayout(userId: string, campaignId: string) {
       }
     });
 
-    throw new Error("Failed to claim payout");
+    let reason = extractHorizonErrorMessage(error);
+    if (reason.includes("op_underfunded")) {
+      try {
+        const sourcePublicKey = StellarSdk.Keypair
+          .fromSecret(decryptSecretKey(pendingPayout.campaign.stellarWalletSecretKeyEncrypted))
+          .publicKey();
+        const sourceBalance = await getWalletNativeBalance(sourcePublicKey);
+        const requestedAmount = toNumber(pendingPayout.amount);
+        reason = `Source campaign wallet is underfunded for this transfer. Balance=${sourceBalance.toFixed(7)} XLM, requested=${requestedAmount.toFixed(7)} XLM (plus fees/reserve).`;
+      } catch {
+        // Keep original Horizon reason if live balance lookup fails.
+      }
+    }
+    console.error("claimPayout failed", {
+      payoutId: pendingPayout.id,
+      campaignId,
+      userId,
+      destination: pendingPayout.user.walletAddress,
+      amount: toNumber(pendingPayout.amount),
+      reason
+    });
+    throw new Error(`Failed to claim payout: ${reason}`);
   }
 }
 

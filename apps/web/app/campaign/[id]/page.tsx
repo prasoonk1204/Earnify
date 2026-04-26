@@ -21,6 +21,7 @@ const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:400
 const HORIZON_URL = process.env.NEXT_PUBLIC_STELLAR_HORIZON_URL ?? "https://horizon-testnet.stellar.org";
 const NETWORK_PASSPHRASE =
   process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE ?? "Test SDF Network ; September 2015";
+const FOUNDER_FEE_BUFFER_XLM = 10;
 
 type CampaignDetails = {
   id: string;
@@ -769,6 +770,9 @@ function CampaignDetailsPage() {
                     {campaign.contractId 
                       ? "Distribute campaign budget on Stellar testnet and monitor transaction flow."
                       : "Your campaign is currently a draft. Deploy the Soroban contract and fund it to go live."}
+                  </p>
+                  <p className="mt-2 text-xs font-medium text-[var(--color-secondary)]">
+                    Fee buffer reserved: {FOUNDER_FEE_BUFFER_XLM} XLM (not part of distributable campaign budget)
                   </p>
                 </div>
                 {campaign.status === "ACTIVE" && campaign.contractId ? (
