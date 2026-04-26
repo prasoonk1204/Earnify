@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "../../components/auth/useAuth";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const { isAuthenticated, loading, loginWithGoogle } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,5 +61,34 @@ export default function LoginPage() {
         </aside>
       </section>
     </main>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <main className="relative min-h-[calc(100vh-4rem)] overflow-hidden px-6 py-14">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(48rem 24rem at 8% 12%, rgba(245,158,11,0.14), transparent), radial-gradient(46rem 20rem at 88% 84%, rgba(255,255,255,0.08), transparent)"
+        }}
+      />
+
+      <section className="mx-auto grid w-full max-w-5xl items-stretch gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+        <article className="surface-card motion-rise rounded-sm p-8 sm:p-10 lg:p-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-primary)]">Secure Access</p>
+          <h1 className="mt-4 text-3xl font-semibold text-zinc-100 sm:text-4xl">Sign in to manage campaigns and payouts</h1>
+        </article>
+      </section>
+    </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

@@ -374,7 +374,7 @@ Creator Posts → API Receives URL → Engagement Fetcher
 - **CI/CD:** GitHub Actions
 - **Hosting:**
   - Frontend: Vercel
-  - Backend: Railway/Render
+  - Backend: Vercel Functions / Railway / Render
   - Database: Neon
 - **Monitoring:** Sentry (Error Tracking)
 
@@ -521,7 +521,7 @@ earnify/
 
 **Deployment Details:**
 - **Frontend:** Deployed on Vercel (Next.js App)
-- **Backend API:** Deployed on Railway/Render
+- **Backend API:** Deployed on Vercel Functions
 - **Database:** PostgreSQL on Neon
 - **Blockchain:** Stellar Testnet
 - **Smart Contracts:** Soroban (Stellar)
