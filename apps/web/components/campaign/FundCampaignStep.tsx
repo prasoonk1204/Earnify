@@ -368,7 +368,7 @@ export function FundCampaignStep({ campaign, onSuccess, onSkip, allowSkip = true
             <p className="mt-2 break-all text-xs opacity-80">
               Tx hash (funded on-chain):{" "}
               <a
-                href={`https://testnet.stellar.expert/explorer/testnet/tx/${txHash}`}
+                href={`https://stellar.expert/explorer/testnet/search?term=${encodeURIComponent(txHash)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="font-bold underline hover:opacity-80"
@@ -388,7 +388,7 @@ export function FundCampaignStep({ campaign, onSuccess, onSkip, allowSkip = true
             <p className="break-all text-xs text-[var(--color-muted)]">
               <span className="font-semibold uppercase tracking-wider">Contract:</span>{" "}
               <a
-                href={`https://testnet.stellar.expert/explorer/testnet/contract/${contractId}`}
+                href={`https://stellar.expert/explorer/testnet/search?term=${encodeURIComponent(contractId)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="font-mono text-[var(--color-primary)] hover:underline"
@@ -399,7 +399,7 @@ export function FundCampaignStep({ campaign, onSuccess, onSkip, allowSkip = true
             <p className="break-all text-xs text-[var(--color-muted)]">
               <span className="font-semibold uppercase tracking-wider">Tx:</span>{" "}
               <a
-                href={`https://testnet.stellar.expert/explorer/testnet/tx/${txHash}`}
+                href={`https://stellar.expert/explorer/testnet/search?term=${encodeURIComponent(txHash)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="font-mono text-[var(--color-primary)] hover:underline"

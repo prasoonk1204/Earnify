@@ -413,7 +413,7 @@ function FundedSuccessPanel({
         <div className="flex flex-col gap-1">
           <span className="font-semibold text-[var(--color-muted)] uppercase tracking-wider text-xs">Contract Address</span>
           <a
-            href={`https://testnet.stellar.expert/explorer/testnet/contract/${contractId}`}
+            href={`https://stellar.expert/explorer/testnet/search?term=${encodeURIComponent(contractId)}`}
             target="_blank"
             rel="noreferrer"
             className="break-all font-mono text-[var(--color-primary)] hover:underline"
@@ -425,7 +425,7 @@ function FundedSuccessPanel({
         <div className="flex flex-col gap-1">
           <span className="font-semibold text-[var(--color-muted)] uppercase tracking-wider text-xs">Funding Transaction</span>
           <a
-            href={`https://testnet.stellar.expert/explorer/testnet/tx/${txHash}`}
+            href={`https://stellar.expert/explorer/testnet/search?term=${encodeURIComponent(txHash)}`}
             target="_blank"
             rel="noreferrer"
             className="break-all font-mono text-[var(--color-primary)] hover:underline"

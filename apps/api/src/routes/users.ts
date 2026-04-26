@@ -29,6 +29,10 @@ function isValidStellarPublicKey(value: string) {
   return StellarSdk.StrKey.isValidEd25519PublicKey(value);
 }
 
+function getExplorerUrl(term: string | null) {
+  return term ? `https://stellar.expert/explorer/testnet/search?term=${encodeURIComponent(term)}` : null;
+}
+
 usersRouter.get("/:id/payouts", requireAuth, async (request, response) => {
   const userId = parseIdParam(request.params.id);
 
@@ -90,7 +94,7 @@ usersRouter.get("/:id/payouts", requireAuth, async (request, response) => {
       status: payout.status,
       stellarTxHash: payout.stellarTxHash,
       stellarTxUrl: payout.stellarTxHash
-        ? `https://testnet.stellar.expert/explorer/testnet/tx/${payout.stellarTxHash}`
+        ? getExplorerUrl(payout.stellarTxHash)
         : null,
       createdAt: payout.createdAt.toISOString()
     }))
@@ -220,7 +224,7 @@ usersRouter.post("/:id/payouts/:campaignId/claim", requireAuth, async (request, 
       amount: toNumber(payout.amount),
       stellarTxHash: payout.stellarTxHash,
       stellarTxUrl: payout.stellarTxHash
-        ? `https://testnet.stellar.expert/explorer/testnet/tx/${payout.stellarTxHash}`
+        ? getExplorerUrl(payout.stellarTxHash)
         : null
     });
   } catch (error) {

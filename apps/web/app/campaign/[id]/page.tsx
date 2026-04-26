@@ -47,8 +47,6 @@ type CampaignDetails = {
   };
 };
 
-type ActiveTab = "leaderboard" | "submit";
-
 type PostSubmissionResponse = {
   postId: string;
   status: PostStatus;
@@ -166,8 +164,6 @@ function CampaignDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [campaignMissing, setCampaignMissing] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>("leaderboard");
-
   const [postUrl, setPostUrl] = useState("");
   const [platform, setPlatform] = useState<SocialPlatform>("TWITTER");
   const [submissionPhase, setSubmissionPhase] = useState<SubmissionPhase>("idle");
@@ -244,7 +240,8 @@ function CampaignDetailsPage() {
   }, [campaign?.stats.topScorer]);
 
   const isFounderView = user?.role === "FOUNDER" && campaign?.founderId === user.id;
-  const canSubmitPost = !isFounderView;
+  const isCampaignEnded = campaign?.status === "ENDED" || campaign?.status === "COMPLETED";
+  const canSubmitPost = !isFounderView && campaign?.status === "ACTIVE";
   const flowSteps = [
     { title: "1. Funded", done: Boolean(campaign?.contractId), detail: "Contract deployed and campaign wallet funded." },
     { title: "2. Participate", done: (campaign?.stats.postCount ?? 0) > 0, detail: "Creators submit and verify campaign posts." },
@@ -707,7 +704,7 @@ function CampaignDetailsPage() {
                 <p className="text-xs uppercase tracking-wider text-[var(--color-muted)] mb-1">Contract Address</p>
                 {campaign.contractId ? (
                   <a
-                    href={`https://testnet.stellar.expert/explorer/testnet/contract/${campaign.contractId}`}
+                    href={`https://stellar.expert/explorer/testnet/search?term=${encodeURIComponent(campaign.contractId)}`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-sm font-medium text-[var(--color-primary)] hover:underline break-all"
@@ -744,21 +741,23 @@ function CampaignDetailsPage() {
             </div>
           </header>
 
-          <section className="grid gap-3 md:grid-cols-3">
-            {flowSteps.map((step) => (
-              <article
-                key={step.title}
-                className={`rounded-xl border p-4 ${
-                  step.done
-                    ? "border-[var(--color-success)]/40 bg-[var(--color-success)]/10"
-                    : "border-[var(--color-border)] bg-[var(--color-surface)]/35"
-                }`}
-              >
-                <p className="text-sm font-semibold text-white">{step.title}</p>
-                <p className="mt-1 text-xs text-[var(--color-muted)]">{step.detail}</p>
-              </article>
-            ))}
-          </section>
+          {isFounderView ? (
+            <section className="grid gap-3 md:grid-cols-3">
+              {flowSteps.map((step) => (
+                <article
+                  key={step.title}
+                  className={`rounded-xl border p-4 ${
+                    step.done
+                      ? "border-[var(--color-success)]/40 bg-[var(--color-success)]/10"
+                      : "border-[var(--color-border)] bg-[var(--color-surface)]/35"
+                  }`}
+                >
+                  <p className="text-sm font-semibold text-white">{step.title}</p>
+                  <p className="mt-1 text-xs text-[var(--color-muted)]">{step.detail}</p>
+                </article>
+              ))}
+            </section>
+          ) : null}
 
           {isFounderView ? (
             <section className="rounded-2xl border border-[var(--color-primary)]/30 bg-[#0D0F14] p-6 md:p-8 shadow-lg">
@@ -882,111 +881,112 @@ function CampaignDetailsPage() {
             </section>
           ) : null}
 
-          {/* Interactive Tabs */}
-          <div className="flex gap-4 border-b border-[var(--color-border)] pb-px">
-            <button
-              onClick={() => setActiveTab("leaderboard")}
-              className={`pb-4 px-2 text-sm font-semibold transition-colors border-b-2 ${activeTab === "leaderboard" ? "border-[var(--color-secondary)] text-[var(--color-secondary)]" : "border-transparent text-[var(--color-muted)] hover:text-white"}`}
-            >
-              Leaderboard
-            </button>
-            {canSubmitPost ? (
-              <button
-                onClick={() => setActiveTab("submit")}
-                className={`pb-4 px-2 text-sm font-semibold transition-colors border-b-2 ${activeTab === "submit" ? "border-[var(--color-secondary)] text-[var(--color-secondary)]" : "border-transparent text-[var(--color-muted)] hover:text-white"}`}
-              >
-                Submit Post
-              </button>
-            ) : null}
-          </div>
+          <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/30 backdrop-blur p-6">
+            <ErrorBoundary fallback={<LeaderboardFallback />} resetKey={`${campaignId}-leaderboard`}>
+              <Leaderboard
+                campaignId={campaignId}
+                initialEntries={leaderboard}
+                isLoading={loadingLeaderboard}
+              />
+            </ErrorBoundary>
+          </section>
 
-          {activeTab === "leaderboard" ? (
-            <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/30 backdrop-blur p-6">
-              <ErrorBoundary fallback={<LeaderboardFallback />} resetKey={`${campaignId}-leaderboard`}>
-                <Leaderboard
-                  campaignId={campaignId}
-                  initialEntries={leaderboard}
-                  isLoading={loadingLeaderboard}
-                />
-              </ErrorBoundary>
-            </section>
-          ) : (
-            <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/30 backdrop-blur p-6 md:p-8 max-w-2xl mx-auto">
-              <div className="mb-8">
-                <h2 className="text-xl font-bold text-white mb-2">How to participate</h2>
-                <ol className="list-decimal list-inside space-y-2 text-sm text-[var(--color-muted)]">
-                  <li>Connect your Stellar wallet (Freighter).</li>
-                  <li>Post on your selected social platform with campaign keywords.</li>
-                  <li>Paste the post URL below to submit for verification.</li>
-                </ol>
+          {canSubmitPost ? (
+            <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/30 backdrop-blur p-6 md:p-8">
+              <div className="grid gap-8 lg:grid-cols-[1fr_1.5fr]">
+                <div>
+                  <h2 className="text-xl font-bold text-white mb-3">Submit your post</h2>
+                  <p className="text-sm text-[var(--color-muted)] mb-4">
+                    Share your live post URL and we will verify it automatically for scoring.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="rounded-lg border border-[var(--color-border)] bg-[#0D0F14] px-3 py-2 text-xs text-[var(--color-muted)]">
+                      1. Publish post with campaign keywords
+                    </div>
+                    <div className="rounded-lg border border-[var(--color-border)] bg-[#0D0F14] px-3 py-2 text-xs text-[var(--color-muted)]">
+                      2. Paste the direct URL below
+                    </div>
+                    <div className="rounded-lg border border-[var(--color-border)] bg-[#0D0F14] px-3 py-2 text-xs text-[var(--color-muted)]">
+                      3. Track verification status instantly
+                    </div>
+                  </div>
+                </div>
+
+                <ErrorBoundary fallback={<PostSubmissionFallback />} resetKey={`${campaignId}-submit`}>
+                  <form className="space-y-5" onSubmit={handleSubmitPost}>
+                    <div>
+                      <label htmlFor="post-url" className="block text-sm font-medium text-[var(--color-muted)] mb-2">Post URL</label>
+                      <input
+                        id="post-url"
+                        type="url"
+                        value={postUrl}
+                        onChange={(event) => setPostUrl(event.target.value)}
+                        required
+                        placeholder="https://x.com/username/status/..."
+                        className="w-full rounded-xl border border-[var(--color-border)] bg-[#0D0F14] px-4 py-3 text-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="platform" className="block text-sm font-medium text-[var(--color-muted)] mb-2">Platform</label>
+                      <select
+                        id="platform"
+                        value={platform}
+                        onChange={(event) => setPlatform(event.target.value as SocialPlatform)}
+                        className="w-full rounded-xl border border-[var(--color-border)] bg-[#0D0F14] px-4 py-3 text-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] transition-all appearance-none"
+                      >
+                        <option value="TWITTER">X (Twitter)</option>
+                        <option value="LINKEDIN">LinkedIn</option>
+                        <option value="INSTAGRAM">Instagram</option>
+                      </select>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={submissionPhase === "submitting" || submissionPhase === "pending"}
+                      className="w-full rounded-full bg-[var(--color-secondary)] px-6 py-4 text-sm font-bold text-white shadow-lg hover:opacity-90 disabled:opacity-50 transition-all"
+                    >
+                      {submissionPhase === "submitting" || submissionPhase === "pending" ? "Verifying..." : "Submit Post"}
+                    </button>
+                  </form>
+                </ErrorBoundary>
               </div>
 
-              <ErrorBoundary fallback={<PostSubmissionFallback />} resetKey={`${campaignId}-submit`}>
-                <form className="space-y-6" onSubmit={handleSubmitPost}>
-                  <div>
-                    <label htmlFor="post-url" className="block text-sm font-medium text-[var(--color-muted)] mb-2">Post URL</label>
-                    <input
-                      id="post-url"
-                      type="url"
-                      value={postUrl}
-                      onChange={(event) => setPostUrl(event.target.value)}
-                      required
-                      placeholder="https://..."
-                      className="w-full rounded-xl border border-[var(--color-border)] bg-[#0D0F14] px-4 py-3 text-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] transition-all"
-                    />
-                  </div>
+              {submissionPhase === "pending" && (
+                <div className="mt-6 flex items-center justify-center gap-3 p-4 rounded-xl bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-sm">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  Verifying engagement and authenticity...
+                </div>
+              )}
+              
+              {submissionPhase === "verified" && (
+                <div className="mt-6 p-4 rounded-xl bg-[var(--color-success)]/10 text-[var(--color-success)] text-sm font-medium text-center border border-[var(--color-success)]/20">
+                  Post verified successfully! You've been added to the leaderboard.
+                </div>
+              )}
 
-                  <div>
-                    <label htmlFor="platform" className="block text-sm font-medium text-[var(--color-muted)] mb-2">Platform</label>
-                    <select
-                      id="platform"
-                      value={platform}
-                      onChange={(event) => setPlatform(event.target.value as SocialPlatform)}
-                      className="w-full rounded-xl border border-[var(--color-border)] bg-[#0D0F14] px-4 py-3 text-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] transition-all appearance-none"
-                    >
-                      <option value="TWITTER">X (Twitter)</option>
-                      <option value="LINKEDIN">LinkedIn</option>
-                      <option value="INSTAGRAM">Instagram</option>
-                    </select>
-                  </div>
+              {submissionPhase === "rejected" && (
+                <div className="mt-6 p-4 rounded-xl bg-[var(--color-danger)]/10 text-[var(--color-danger)] text-sm text-center border border-[var(--color-danger)]/20">
+                  <span className="font-bold block mb-1">Verification Failed</span>
+                  {rejectionReason ?? "Your post didn't meet campaign requirements."}
+                </div>
+              )}
 
-                  <button
-                    type="submit"
-                    disabled={submissionPhase === "submitting" || submissionPhase === "pending"}
-                    className="w-full rounded-full bg-[var(--color-secondary)] px-6 py-4 text-sm font-bold text-white shadow-lg hover:opacity-90 disabled:opacity-50 transition-all"
-                  >
-                    {submissionPhase === "submitting" || submissionPhase === "pending" ? "Verifying..." : "Submit Post for Verification"}
-                  </button>
-                </form>
-
-                {submissionPhase === "pending" && (
-                  <div className="mt-6 flex items-center justify-center gap-3 p-4 rounded-xl bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-sm">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                    Verifying engagement and authenticity...
-                  </div>
-                )}
-                
-                {submissionPhase === "verified" && (
-                  <div className="mt-6 p-4 rounded-xl bg-[var(--color-success)]/10 text-[var(--color-success)] text-sm font-medium text-center border border-[var(--color-success)]/20">
-                    Post verified successfully! You've been added to the leaderboard.
-                  </div>
-                )}
-
-                {submissionPhase === "rejected" && (
-                  <div className="mt-6 p-4 rounded-xl bg-[var(--color-danger)]/10 text-[var(--color-danger)] text-sm text-center border border-[var(--color-danger)]/20">
-                    <span className="font-bold block mb-1">Verification Failed</span>
-                    {rejectionReason ?? "Your post didn't meet campaign requirements."}
-                  </div>
-                )}
-
-                {submissionPhase === "error" && submissionMessage && (
-                  <div className="mt-6 p-4 rounded-xl bg-[var(--color-danger)]/10 text-[var(--color-danger)] text-sm text-center border border-[var(--color-danger)]/20">
-                    {submissionMessage}
-                  </div>
-                )}
-              </ErrorBoundary>
+              {submissionPhase === "error" && submissionMessage && (
+                <div className="mt-6 p-4 rounded-xl bg-[var(--color-danger)]/10 text-[var(--color-danger)] text-sm text-center border border-[var(--color-danger)]/20">
+                  {submissionMessage}
+                </div>
+              )}
             </section>
-          )}
+          ) : null}
+
+          {!isFounderView && isCampaignEnded ? (
+            <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/20 p-5 text-center">
+              <p className="text-sm text-[var(--color-muted)]">
+                This campaign has ended. Post submissions are now closed.
+              </p>
+            </section>
+          ) : null}
 
         </section>
       </main>

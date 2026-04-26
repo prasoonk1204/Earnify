@@ -6,7 +6,7 @@ import { emitPayoutUpdate } from "../websocket.ts";
 
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
 const NETWORK_PASSPHRASE = StellarSdk.Networks.TESTNET;
-const STELLAR_EXPERT_BASE_URL = "https://testnet.stellar.expert/explorer/testnet/tx";
+const STELLAR_EXPERT_BASE_URL = "https://stellar.expert/explorer/testnet/search?term=";
 
 const horizon = new StellarSdk.Horizon.Server(HORIZON_URL);
 
@@ -423,12 +423,12 @@ async function executeCampaignPayouts(campaignId: string, options: ExecutePayout
     refund: refund
       ? {
           ...refund,
-          stellarTxUrl: refund.stellarTxHash ? `${STELLAR_EXPERT_BASE_URL}/${refund.stellarTxHash}` : null
+          stellarTxUrl: getExplorerUrl(refund.stellarTxHash)
         }
       : null,
     payouts: results.map((entry) => ({
       ...entry,
-      stellarTxUrl: entry.stellarTxHash ? `${STELLAR_EXPERT_BASE_URL}/${entry.stellarTxHash}` : null
+      stellarTxUrl: getExplorerUrl(entry.stellarTxHash)
     }))
   };
 }
@@ -507,7 +507,7 @@ async function claimPayout(userId: string, campaignId: string) {
       amount: toNumber(completed.amount),
       status: completed.status,
       stellarTxHash: completed.stellarTxHash,
-      stellarTxUrl: completed.stellarTxHash ? `${STELLAR_EXPERT_BASE_URL}/${completed.stellarTxHash}` : null
+      stellarTxUrl: getExplorerUrl(completed.stellarTxHash)
     };
 
     emitPayoutUpdate(completed.campaignId, {
@@ -555,3 +555,6 @@ async function claimPayout(userId: string, campaignId: string) {
 }
 
 export { claimPayout, executeCampaignPayouts };
+function getExplorerUrl(term: string | null) {
+  return term ? `${STELLAR_EXPERT_BASE_URL}${encodeURIComponent(term)}` : null;
+}

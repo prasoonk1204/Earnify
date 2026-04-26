@@ -51,4 +51,11 @@ export interface LeaderboardEntry {
   platforms: SocialPlatform[];
   lastUpdatedAt: string | null;
   change: "up" | "down" | "same";
+  xStats?: {
+    views: number;
+    likes: number;
+    replies: number;
+    reposts: number;
+    lastSyncedAt: string | null;
+  };
 }

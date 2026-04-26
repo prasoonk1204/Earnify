@@ -54,7 +54,11 @@ function parseIdParam(value: string | string[] | undefined): string | null {
 }
 
 function getTxUrl(hash: string | null) {
-  return hash ? `https://testnet.stellar.expert/explorer/testnet/tx/${hash}` : null;
+  return hash ? `https://stellar.expert/explorer/testnet/search?term=${encodeURIComponent(hash)}` : null;
+}
+
+function getExplorerUrl(term: string | null) {
+  return term ? `https://stellar.expert/explorer/testnet/search?term=${encodeURIComponent(term)}` : null;
 }
 
 function writeSse(response: { write: (chunk: string) => void }, event: string, data: unknown) {
@@ -211,7 +215,7 @@ campaignsRouter.post("/", requireAuth, requireRole("FOUNDER"), async (request, r
           contractId: updatedCampaign.contractId ?? updatedCampaign.stellarContractId,
           fundingTxHash: updatedCampaign.fundingTxHash,
           contractExplorerUrl: updatedCampaign.stellarContractId
-            ? `https://testnet.stellar.expert/explorer/testnet/contract/${updatedCampaign.stellarContractId}`
+            ? getExplorerUrl(updatedCampaign.stellarContractId)
             : null,
           fundingTxUrl: getTxUrl(updatedCampaign.fundingTxHash)
         },
@@ -682,7 +686,7 @@ campaignsRouter.patch("/:id", requireAuth, requireRole("FOUNDER"), async (reques
     fundingTxHash: campaign.fundingTxHash,
     fundingTxUrl: getTxUrl(campaign.fundingTxHash),
     contractExplorerUrl: campaign.contractId
-      ? `https://testnet.stellar.expert/explorer/testnet/contract/${campaign.contractId}`
+      ? getExplorerUrl(campaign.contractId)
       : null
   });
 });
@@ -1078,7 +1082,7 @@ campaignsRouter.get("/:id/contract-info", requireAuth, async (request, response)
       campaignWalletAddress: campaign.stellarWalletPublicKey,
       status: contractInfo.status,
       creatorScores: contractInfo.creatorScores,
-      explorerUrl: `https://testnet.stellar.expert/explorer/testnet/contract/${resolvedContractId}`
+      explorerUrl: getExplorerUrl(resolvedContractId)
     });
   } catch (error) {
     sendError(response, error instanceof Error ? error.message : "Failed to fetch on-chain contract info", 500);
@@ -1134,7 +1138,7 @@ campaignsRouter.get("/:id/payouts", requireAuth, async (request, response) => {
       status: payout.status,
       stellarTxHash: payout.stellarTxHash,
       stellarTxUrl: payout.stellarTxHash
-        ? `https://testnet.stellar.expert/explorer/testnet/tx/${payout.stellarTxHash}`
+        ? getTxUrl(payout.stellarTxHash)
         : null,
       createdAt: payout.createdAt.toISOString()
     }))
