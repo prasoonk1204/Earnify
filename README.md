@@ -10,19 +10,19 @@
 
 ## Table of Contents
 
-- [Overview](#-overview)
-- [Key Features](#-key-features)
-- [Architecture](#-architecture)
-- [Tech Stack](#-tech-stack)
-- [Getting Started](#-getting-started)
-- [Live Demo](#-live-demo)
-- [Demo Video](#-demo-video)
-- [User Wallets](#-verified-user-wallets)
-- [User Feedback](#-user-feedback)
-- [Future Roadmap](#-future-roadmap-based-on-user-feedback)
-- [Smart Contract Details](#-smart-contract-details)
-- [API Documentation](#-api-documentation)
-- [Contributing](#-contributing)
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Live Demo](#live-demo)
+- [Demo Video](#demo-video)
+- [User Wallets](#user-wallets)
+- [User Feedback](#user-feedback)
+- [Future Roadmap](#future-roadmap)
+- [Smart Contract Details](#smart-contract-details)
+- [API Documentation](#api-documentation)
+- [Contributing](#contributing)
 
 ---
 
@@ -395,7 +395,7 @@ Creator Posts → API Receives URL → Engagement Fetcher
 
 1. **Clone Repository**
 ```bash
-git clone https://github.com/yourusername/earnify.git
+git clone https://github.com/prasoonk1204/earnify.git
 cd earnify
 ```
 
@@ -439,7 +439,7 @@ INSTAGRAM_API_KEY="your-instagram-key"
 GROQ_API_KEY="your-groq-api-key"
 
 # App
-NEXT_PUBLIC_API_URL="http://localhost:5000"
+NEXT_PUBLIC_API_URL="http://localhost:4000"
 PORT=5000
 ```
 
@@ -517,11 +517,11 @@ earnify/
 
 ## Live Demo
 
-**Platform URL:** []()
+**Platform URL:** [earnify-web.vercel.app](https://earnify-web.vercel.app)
 
 **Deployment Details:**
 - **Frontend:** Deployed on Vercel (Next.js App)
-- **Backend API:** Deployed on Vercel Functions
+- **Backend API:** Deployed on Render
 - **Database:** PostgreSQL on Neon
 - **Blockchain:** Stellar Testnet
 - **Smart Contracts:** Soroban (Stellar)
@@ -535,7 +535,7 @@ earnify/
 
 ## Demo Video
 
-**Full MVP Demo:** [Watch on YouTube]()
+**Full MVP Demo:** [Watch on YouTube](https://youtu.be/1DLR0gzyJ9Y)
 
 **Walkthrough Includes:**
 1. Creator registration & wallet connection
@@ -671,9 +671,9 @@ resumeCampaign(campaignId: string)
 
 ### Base URL
 ```
-Production: https://api.earnify.app
-Testnet: https://api-testnet.earnify.app
-Local: http://localhost:3000
+Production: https://earnify-yqyr.onrender.com
+Testnet: https://earnify-yqyr.onrender.com
+Local: http://localhost:4000
 ```
 
 ### Authentication
@@ -890,7 +890,7 @@ This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file
 
 ---
 
-**Report Bugs:** [GitHub Issues](https://github.com/yourusername/earnify/issues)
+**Report Bugs:** [GitHub Issues](https://github.com/prasoonk1204/earnify/issues)
 
 ---
 
