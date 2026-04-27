@@ -17,9 +17,9 @@
 - [Getting Started](#getting-started)
 - [Live Demo](#live-demo)
 - [Demo Video](#demo-video)
-- [User Wallets](#user-wallets)
+- [User Wallets](#verified-user-wallets)
 - [User Feedback](#user-feedback)
-- [Future Roadmap](#future-roadmap)
+- [Future Roadmap](#future-roadmap-and-development-plans)
 - [Smart Contract Details](#smart-contract-details)
 - [API Documentation](#api-documentation)
 - [Contributing](#contributing)
@@ -440,7 +440,7 @@ GROQ_API_KEY="your-groq-api-key"
 
 # App
 NEXT_PUBLIC_API_URL="http://localhost:4000"
-PORT=5000
+PORT=4000
 ```
 
 4. **Run Setup Script**
@@ -559,16 +559,16 @@ Below are 5+ verified Stellar testnet wallet addresses.
 - `GCRZFG2VFVFRP5454SMUETCNXHWI2DIMVTPF7YAHCCKQTVV64VXLEAIO`
 
 **Smart Contract Address:**
-- **Contract ID:** `CBPHL5FJUTF4MFG46LMIM6QB6CCSQYPECB7XPF2LTWXL4LWRQEYXRTJN`
 - **Campaign Contract ID(example):** `CC6XIDL2Y4653227FROEM2YX7Y5ANZBNMCAFQ4JHCZ7QY5M53DAYUZF5`
 - Each campaign has a different contract ID
+- **Contract ID:** `CBPHL5FJUTF4MFG46LMIM6QB6CCSQYPECB7XPF2LTWXL4LWRQEYXRTJN`
 ---
 
 ## User Feedback
 
 **Feedback Report:** [View on Google Docs →](https://docs.google.com/spreadsheets/d/1-Q9381iqetqjVIQmu8F8rM13YSdMmEJNq9iHOGsi-KA/edit?usp=sharing)
 
-## Future Roadmap & Development Plans
+## Future Roadmap and Development Plans
  
 Our roadmap focuses on scaling the platform, enhancing user experience, and expanding blockchain capabilities.
  
