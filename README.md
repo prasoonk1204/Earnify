@@ -4,6 +4,8 @@
 
 [![Stellar](https://img.shields.io/badge/Blockchain-Stellar-purple)](https://stellar.org)
 
+**Website URL:** [earnify-web.vercel.app](https://earnify-web.vercel.app)
+
 > A decentralized platform that transforms social media marketing into a fair earning opportunity. Founders deposit marketing budgets on Stellar blockchain, creators promote products on social platforms, and automated smart contracts distribute earnings based on engagement - no middlemen, complete transparency.
 
 ---
@@ -12,13 +14,14 @@
 
 - [Overview](#overview)
 - [Key Features](#key-features)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Live Demo](#live-demo)
+- [Live Website](#live-website)
 - [Demo Video](#demo-video)
 - [User Wallets](#verified-user-wallets)
 - [User Feedback](#user-feedback)
+- [DApp Screenshots](#dapp-screenshots)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
 - [Future Roadmap](#future-roadmap-and-development-plans)
 - [Smart Contract Details](#smart-contract-details)
 - [API Documentation](#api-documentation)
@@ -95,6 +98,77 @@ Earnify creates a **transparent, performance-based marketing ecosystem** where:
 - **Advanced Analytics:** Comprehensive dashboards for all users
 
 ---
+
+## Live Website
+
+**Website URL:** [earnify-web.vercel.app](https://earnify-web.vercel.app)
+
+**Deployment Details:**
+- **Frontend:** Deployed on Vercel (Next.js App)
+- **Backend API:** Deployed on Render
+- **Database:** PostgreSQL on Neon
+- **Blockchain:** Stellar Testnet
+- **Smart Contracts:** Soroban (Stellar)
+
+---
+
+## Demo Video
+
+**Full MVP Demo:** [Watch on YouTube](https://youtu.be/1DLR0gzyJ9Y)
+
+**Walkthrough Includes:**
+1. Creator registration & wallet connection
+2. Founder campaign creation with budget deposit
+3. Posting content on X/LinkedIn/Instagram
+4. Real-time engagement tracking
+5. Leaderboard & analytics dashboard
+6. Automated payout distribution
+
+---
+
+## Verified User Wallets
+
+Below are 5+ verified Stellar testnet wallet addresses.
+
+- `GBJUG47XA3RMURCIXWSR3JGPVIFQRJRBW7WF5SNKHZ33IO3IC53B7G4C`
+- `GBZOOB75QVA2S2FWMJDWIYDQPXF6TKL5OJKMEIR3MVNQ5RFKLKJBCSFN`
+- `GBXNK7OB3RZ7GFLYRMB6HEQELYFXO24KICDUXT24CFE3XS7MMVMEXBUK`
+- `GBI5CUCM23XS3Q3T534XKTR5QAFPUIZ6U6SRZFB7ADGWOLRD7PKLOSWP`
+- `GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR`
+- `GCRZFG2VFVFRP5454SMUETCNXHWI2DIMVTPF7YAHCCKQTVV64VXLEAIO`
+
+**Smart Contract Address:**
+- **Campaign Contract ID(example):** `CC6XIDL2Y4653227FROEM2YX7Y5ANZBNMCAFQ4JHCZ7QY5M53DAYUZF5`
+- Each campaign has a different contract ID
+- **Contract ID:** `CBPHL5FJUTF4MFG46LMIM6QB6CCSQYPECB7XPF2LTWXL4LWRQEYXRTJN`
+---
+
+
+## User Feedback
+
+**Feedback Report:** [View on Google Docs →](https://docs.google.com/spreadsheets/d/1-Q9381iqetqjVIQmu8F8rM13YSdMmEJNq9iHOGsi-KA/edit?usp=sharing)
+
+
+## DApp Screenshots
+
+### Home Page
+![alt text](image-2.png)
+![alt text](image-1.png)
+
+
+### Founder Dashboard 
+#### Creating Campaign
+![alt text](image-6.png)
+![alt text](image-5.png)
+![alt text](image-4.png)
+
+#### Live Campaign
+![alt text](image-3.png)
+
+### Creator Dashboaard
+![alt text](image.png)
+
+
 
 ## Architecture
 
@@ -515,58 +589,6 @@ earnify/
 
 ---
 
-## Live Demo
-
-**Platform URL:** [earnify-web.vercel.app](https://earnify-web.vercel.app)
-
-**Deployment Details:**
-- **Frontend:** Deployed on Vercel (Next.js App)
-- **Backend API:** Deployed on Render
-- **Database:** PostgreSQL on Neon
-- **Blockchain:** Stellar Testnet
-- **Smart Contracts:** Soroban (Stellar)
-
-**Test Credentials:**
-- Role: Creator/Founder (OAuth via Google)
-- Network: Stellar Testnet
-- Explorer: [Stellar Expert](https://stellar.expert/explorer/testnet)
-
----
-
-## Demo Video
-
-**Full MVP Demo:** [Watch on YouTube](https://youtu.be/1DLR0gzyJ9Y)
-
-**Walkthrough Includes:**
-1. Creator registration & wallet connection
-2. Founder campaign creation with budget deposit
-3. Posting content on X/LinkedIn/Instagram
-4. Real-time engagement tracking
-5. Leaderboard & analytics dashboard
-6. Automated payout distribution
-
----
-
-## Verified User Wallets
-
-Below are 5+ verified Stellar testnet wallet addresses.
-
-- `GBJUG47XA3RMURCIXWSR3JGPVIFQRJRBW7WF5SNKHZ33IO3IC53B7G4C`
-- `GBZOOB75QVA2S2FWMJDWIYDQPXF6TKL5OJKMEIR3MVNQ5RFKLKJBCSFN`
-- `GBXNK7OB3RZ7GFLYRMB6HEQELYFXO24KICDUXT24CFE3XS7MMVMEXBUK`
-- `GBI5CUCM23XS3Q3T534XKTR5QAFPUIZ6U6SRZFB7ADGWOLRD7PKLOSWP`
-- `GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR`
-- `GCRZFG2VFVFRP5454SMUETCNXHWI2DIMVTPF7YAHCCKQTVV64VXLEAIO`
-
-**Smart Contract Address:**
-- **Campaign Contract ID(example):** `CC6XIDL2Y4653227FROEM2YX7Y5ANZBNMCAFQ4JHCZ7QY5M53DAYUZF5`
-- Each campaign has a different contract ID
-- **Contract ID:** `CBPHL5FJUTF4MFG46LMIM6QB6CCSQYPECB7XPF2LTWXL4LWRQEYXRTJN`
----
-
-## User Feedback
-
-**Feedback Report:** [View on Google Docs →](https://docs.google.com/spreadsheets/d/1-Q9381iqetqjVIQmu8F8rM13YSdMmEJNq9iHOGsi-KA/edit?usp=sharing)
 
 ## Future Roadmap and Development Plans
  
@@ -892,11 +914,6 @@ This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file
 
 **Report Bugs:** [GitHub Issues](https://github.com/prasoonk1204/earnify/issues)
 
----
-
-<div align="center">
-
-**Built with ❤️ by the Earnify Team**
 
 [![Stellar](https://img.shields.io/badge/Powered%20by-Stellar-purple?style=for-the-badge)](https://stellar.org)
 [![Soroban](https://img.shields.io/badge/Smart%20Contracts-Soroban-blue?style=for-the-badge)](https://soroban.stellar.org)
