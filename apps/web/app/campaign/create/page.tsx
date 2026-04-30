@@ -600,9 +600,9 @@ function CreateCampaignPage() {
     contractId: string;
     txHash: string;
   } | null>(null);
-  const [draftStatus, setDraftStatus] = useState<
-    "idle" | "saved" | "restored"
-  >("idle");
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saved" | "restored">(
+    "idle",
+  );
 
   // Derived
   const keywords = keywordsInput
@@ -622,7 +622,8 @@ function CreateCampaignPage() {
     }
 
     if (fieldErrors.platforms) {
-      document.querySelector<HTMLButtonElement>('button[data-platform-chip="X"]')
+      document
+        .querySelector<HTMLButtonElement>('button[data-platform-chip="X"]')
         ?.focus();
       return;
     }
@@ -738,7 +739,9 @@ function CreateCampaignPage() {
           savedAt: new Date().toISOString(),
         }),
       );
-      setDraftStatus((previous) => (previous === "restored" ? previous : "saved"));
+      setDraftStatus((previous) =>
+        previous === "restored" ? previous : "saved",
+      );
     }, 600);
 
     return () => window.clearTimeout(timeout);

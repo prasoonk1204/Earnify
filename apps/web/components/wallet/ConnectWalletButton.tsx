@@ -42,9 +42,7 @@ export function ConnectWalletButton() {
   } = useWallet();
 
   const [showDisconnect, setShowDisconnect] = useState(false);
-  const [copyState, setCopyState] = useState<"idle" | "done" | "error">(
-    "idle",
-  );
+  const [copyState, setCopyState] = useState<"idle" | "done" | "error">("idle");
 
   const handleCopy = async () => {
     if (!walletAddress) {

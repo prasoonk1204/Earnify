@@ -451,9 +451,8 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
 
   // Founders see all their own campaigns + active campaigns
   if (authenticatedUserRole === "FOUNDER" && authenticatedUserId) {
-    const expiredDraftCount = await expireStaleDraftCampaigns(
-      authenticatedUserId,
-    );
+    const expiredDraftCount =
+      await expireStaleDraftCampaigns(authenticatedUserId);
     const [activeCampaigns, founderCampaigns] = await Promise.all([
       prisma.campaign.findMany({
         where: { status: CampaignStatus.ACTIVE },

@@ -179,7 +179,11 @@ function FounderDashboardPage() {
     }
 
     return "Create your next campaign to keep the pipeline moving.";
-  }, [segmentedCampaigns.live, segmentedCampaigns.upcoming, staleDrafts.length]);
+  }, [
+    segmentedCampaigns.live,
+    segmentedCampaigns.upcoming,
+    staleDrafts.length,
+  ]);
 
   const handleSwitchToUser = async () => {
     setSwitchingRole(true);

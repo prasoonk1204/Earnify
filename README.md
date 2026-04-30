@@ -148,6 +148,41 @@ Below are 5+ verified Stellar testnet wallet addresses.
 
 **Feedback Report:** [View on Google Docs →](https://docs.google.com/spreadsheets/d/1-Q9381iqetqjVIQmu8F8rM13YSdMmEJNq9iHOGsi-KA/edit?usp=sharing)
 
+---
+
+| User Name | Email | Wallet Address | Feedback(Optional) | Commit |
+| --- | --- | --- | --- | --- |
+| Kenny | abcdxyz1213140@gmail.com | `GCRZFG2VFVFRP5454SMUETCNXHWI2DIMVTPF7YAHCCKQTVV64VXLEAIO` | - |  |
+| Arjun Mehta | arjun.mehta482@gmail.com | `GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR` | - |  |
+| Nikhil Roy | nikhil.roy.design@gmail.com | `GBI5CUCM23XS3Q3T534XKTR5QAFPUIZ6U6SRZFB7ADGWOLRD7PKLOSWP` | - |  |
+| Priya Singh | priya.singh12@gmail.com | `GBXNK7OB3RZ7GFLYRMB6HEQELYFXO24KICDUXT24CFE3XS7MMVMEXBUK` | - |  |
+| Shashank Gupta | shashankg9654@gmail.com | `GBZOOB75QVA2S2FWMJDWIYDQPXF6TKL5OJKMEIR3MVNQ5RFKLKJBCSFN` | - |  |
+| Depanshu Singh | pk2arcade25@gmail.com | `GBJUG47XA3RMURCIXWSR3JGPVIFQRJRBW7WF5SNKHZ33IO3IC53B7G4C` | Copy wallet button sometimes does nothing on first click. | `73879b8` |
+| Aarav Sharma | aaravsharma111@gmail.com | `GAIHCIFGVM5ADPJQAHIAVBVJK6B3RUNCYLDOCL27BTDBW3HMO4S72CDA` | Add small loading spinner after submit | `73879b8` |
+| Karan Malhotra | karanm9982@gmail.com | `GD7YJ2LFGW5OQ2O4CGFSF7JA3N23HU52Q7L75BHPQ7NVVOD6YHED5RT3` | I like the overall flow, but campaign creation still feels a bit too manual when I’m just trying to get something live quickly. | `ca838c6` |
+| Arjun Desai | adesai01@gmail.com | `GBTORQK3ZR3RPJF4WTTSH5KVDOAZ4BJI7PD2ECLSBDNHRG4ICNC4JJZV` | Everything works well for me overall, no major changes needed right now |  |
+| Kavya Menon | kavya.menon482@gmail.com | `GBJYXFCBCO5TK5OV7TRLLLCJEFPLTHXEMWOOUR7LXXFC5OPKGL2Y5ONY` | I wish wallet-related actions felt more predictable, especially when something is loading or waiting on the network | `73879b8` |
+| Nikhil Joshi | nikhiljoshi_91@gmail.com | `GBTYEP72LBTQWQXKN2RSBZL7VB5CQFYAHM43DTIFYCRGCYUPJ7K4HLJ5` | - |  |
+| Emma Wilson | emmawilsondes@gmail.com | `GBK2KQKYOLHIODETLQCBK32C3LXJ7JLWVJFGSTLZVKKHLG2CJKCHBVB3` | I’d like a clearer sense of what is live, what is pending, and what still needs my action | `73879b8` |
+| Pooja Kulkarni | poojakulkarni12@gmail.com | `GATALTGTWIOT6BUDBCZM3Q4OQ4BO2COLOAZ7IYSKPLC2PMSOPPGF5V56` | Save campaign draft automatically every few seconds and restore it if the page is refreshed accidentally | `f345d85` |
+| Raj Singh | rajsingh_248@gmail.com | `GBT64UUZJXQUBHFUHHPNAQU7Z5RU3MTF3B33TQUF4A3KRCGQNKUS7AT7` | - |  |
+| Rahul Bansal | rahulbansal9654@gmail.com | `GBR7JOTMRPWJO7DC5PU7OCVA2Z5NSEDYUPKAHYZFEKAFNR74O2OILA62` | Disabled buttons are too faint and look broken | `f345d85` |
+| Mohit Arora | mohit.arora01@gmail.com | `GAIRISXKPLOWZBMFRPU5XRGUUX3VMA3ZEWKBM5MSNRU3CHV6P4PYZ74D` | - |  |
+| Daniel Lee | danlee_77@gmail.com | `GDX77ATVNOJMFJSLYECWK33GPOFZKQFKI35ZRKHTRVFA2LSDIDDBKAIC` | Prevent saving a campaign if end date is already past | `f345d85` |
+| Isha Reddy | ishareddy111@gmail.com | `GD7DK6TOWCW43WFAIEAS3XEYUWLUCHKYX3ZLSUJ3D7DVTZNZMAJ625AA` | Track wallet connect failures in admin logs and group them by browser so repeated connection issues are easier to debug | `13bcfd6` |
+| Ananya Iyer | ananyaiyer998@gmail.com | `GBI7T6LSBOHXW77YWKQQAWPBJXU3NDSJAKHJTQG7P6TQYGDTCP6L4LXP` | - |  |
+| Roshan Singh | roshansingh25@gmail.com | `GCU35EYP2JACADYQZ4QSTHB3PZBKAIWP3OAWQZ64KK4U6RHO6GAZ5AOV` | I want to understand faster whether a campaign is performing well or just sitting idle | `73879b8` |
+| Amrit Kumar | amritkumar.arc@gmail.com | `GDTLNKKVGJHBGZNHHB5PSTNKZXNMVSNH5DPKQUXQMQZXJQ4BVHDQVZQM` | Connect wallet CTA text is too long on mobile and wraps awkwardly | `73879b8` |
+| Aditya Rao | adityarao482@gmail.com | `GC5EWEZ7BCKVTV27BBWURACCNN74OXETYWTYXT3PGOXXMUIOJEAOQBF4` | View all link should open the full campaign list directly | `73879b8` |
+| Dev Patel | devpatel_14@gmail.com | `GCT25GZNARRSCK7AMXN45MYRVF7WEANOV4NJEGGE7KYR2XKDFZWVES6U` | I’d like the product to do a better job of telling me the next best action instead of only showing raw information | `73879b8` |
+| Meera Sinha | meerasinha01@gmail.com | `GDGKAQAPPFGIFZH5OMXQ6GFQXMPQ4MXIQD4QNLZMUA4EPQAHSKBYDKP` | Campaign title field loses focus after validation error | `f345d85` |
+| Chloe Dubois | chloedubois91@gmail.com | `GBO3V4NJK3CNJCAZ2KHYURYME33ALGJVDXIIOOTB3DYC2U3FSLK6VSW7` | - |  |
+| Ritu Saxena | ritusaxena248@gmail.com | `GC5QYAXQ4ONVU37M5DVSPDNFLL67TPSLJTGOEGSZSOV3A6Z27WRMW7RO` | Everything is mostly fine, I just think the app could explain success and failure states more clearly | `73879b8` |
+| Aditya Singh | adityasingh.design@gmail.com | `GDWCQAPFKV73LSVMGZJNZHRJZJTNXZBF5SJNK6SHZ3KBF3H6YVRJ5LHC` | - |  |
+| Rajiv Dubey | rajivdubey965@gmail.com | `GB3SJNU4PJI4VNEDJWDFDHX4XNOTL4GS77VHTHUTAR2WOBQSL6EOU4L4` | No big complaints from my side, just a few small polish changes would make the app feel more complete |  |
+| Debu Singh | debusingh111@gmail.com | `GDYBURRC65RF5D65HHGSHLET2UZU5ZLYEZ4DZSGACJRW2XPNWTNDQFN4` | Empty state icon is missing on mobile layout | `73879b8` |
+| Tanya Chawla | tanyachawla482@gmail.com | `GA32PDGDISFBRSO3R6JEAB2RMSWLU3FYH3Y6XQJ4I3CAOSW7RSTOA6D2` | Auto-expire stale draft campaigns after a few days and show a small notice so founders know why an old draft disappeared | `ca838c6` |
+
 
 ## DApp Screenshots
 
@@ -167,7 +202,6 @@ Below are 5+ verified Stellar testnet wallet addresses.
 
 ### Creator Dashboaard
 ![alt text](image.png)
-
 
 
 ## Architecture

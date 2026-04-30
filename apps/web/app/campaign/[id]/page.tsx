@@ -1150,14 +1150,14 @@ function CampaignDetailsPage() {
                       className="w-full rounded-full bg-[var(--color-secondary)] px-6 py-4 text-sm font-bold text-white shadow-lg hover:opacity-90 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-200 disabled:opacity-80 transition-all"
                     >
                       {submissionPhase === "submitting" ||
-                      submissionPhase === "pending"
-                        ? (
-                            <span className="inline-flex items-center gap-2">
-                              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                              Verifying...
-                            </span>
-                          )
-                        : "Submit Post"}
+                      submissionPhase === "pending" ? (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                          Verifying...
+                        </span>
+                      ) : (
+                        "Submit Post"
+                      )}
                     </button>
                   </form>
                 </ErrorBoundary>
