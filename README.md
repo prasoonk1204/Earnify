@@ -145,6 +145,7 @@ Below are 5+ verified Stellar testnet wallet addresses.
 
 
 ## User Feedback
+**Feedback Form:** [View Form →](https://docs.google.com/forms/d/e/1FAIpQLSe0qz-srhdwQ1dQhVaLHk_VzkfodzFdPVd9wtKkwwPLQ_Fdhw/viewform)
 
 **Feedback Report:** [View on Google Docs →](https://docs.google.com/spreadsheets/d/1-Q9381iqetqjVIQmu8F8rM13YSdMmEJNq9iHOGsi-KA/edit?usp=sharing)
 
