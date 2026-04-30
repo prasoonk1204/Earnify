@@ -56,6 +56,26 @@ function getTimeLabel(endDate?: string | null) {
   return days === 1 ? "1 day left" : `${days} days left`;
 }
 
+function getMomentumLabel(campaign: CampaignCardProps["campaign"]) {
+  if (campaign.status === "ENDED" || campaign.status === "COMPLETED") {
+    return "Settled";
+  }
+
+  if (campaign.status === "DRAFT") {
+    return "Needs funding";
+  }
+
+  if (campaign.status === "ACTIVE" && campaign.participants === 0) {
+    return "Needs traction";
+  }
+
+  if (campaign.status === "ACTIVE") {
+    return "Performing";
+  }
+
+  return "Scheduled";
+}
+
 export function CampaignCard({ campaign }: CampaignCardProps) {
   const founderName = campaign.founder?.name?.trim() || "Founder";
 
@@ -94,9 +114,14 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
             By{" "}
             <span className="font-semibold text-zinc-100">{founderName}</span>
           </p>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500">
-            {getTimeLabel(campaign.endDate)}
-          </p>
+          <div className="text-right">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-zinc-500">
+              {getTimeLabel(campaign.endDate)}
+            </p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-primary)]">
+              {getMomentumLabel(campaign)}
+            </p>
+          </div>
         </div>
 
         <BudgetBar

@@ -141,6 +141,42 @@ function FounderDashboardPage() {
     return { live, upcoming, ended };
   }, [campaigns]);
 
+  const staleDrafts = useMemo(
+    () =>
+      campaigns.filter((campaign) => {
+        if (campaign.status !== "DRAFT") {
+          return false;
+        }
+
+        const ageMs = Date.now() - new Date(campaign.createdAt).getTime();
+        return ageMs >= 3 * 24 * 60 * 60 * 1000;
+      }),
+    [campaigns],
+  );
+
+  const nextAction = useMemo(() => {
+    if (staleDrafts.length > 0) {
+      return "Review older drafts soon. Drafts left untouched for several days are likely abandoned.";
+    }
+
+    const liveWithoutParticipants = segmentedCampaigns.live.filter(
+      (campaign) => campaign.postCount === 0,
+    );
+    if (liveWithoutParticipants.length > 0) {
+      return "Your biggest opportunity is getting traction on live campaigns with no participants yet.";
+    }
+
+    if (segmentedCampaigns.upcoming.length > 0) {
+      return "You have upcoming campaigns queued. Double-check funding and dates before they go live.";
+    }
+
+    if (segmentedCampaigns.live.length > 0) {
+      return "Live campaigns look healthy. Focus on leaderboard movement and payout readiness.";
+    }
+
+    return "Create your next campaign to keep the pipeline moving.";
+  }, [segmentedCampaigns.live, segmentedCampaigns.upcoming, staleDrafts.length]);
+
   const handleSwitchToUser = async () => {
     setSwitchingRole(true);
     const ok = await switchRole("USER");
@@ -237,23 +273,46 @@ function FounderDashboardPage() {
 
         <section className="space-y-5">
           <div className="surface-card rounded-sm p-5">
-            <div className="flex flex-wrap items-center gap-2">
-              {(["live", "upcoming", "ended"] as CampaignSegment[]).map(
-                (segment) => (
-                  <button
-                    key={segment}
-                    type="button"
-                    onClick={() => setCampaignTab(segment)}
-                    className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.09em] ${
-                      campaignTab === segment
-                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-black"
-                        : "border-zinc-700 text-zinc-300"
-                    }`}
-                  >
-                    {segment} ({segmentedCampaigns[segment].length})
-                  </button>
-                ),
-              )}
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.1em] text-zinc-500">
+                  What Needs Action
+                </p>
+                <p className="mt-2 max-w-2xl text-sm text-zinc-300">
+                  {nextAction}
+                </p>
+                {staleDrafts.length > 0 ? (
+                  <p className="mt-2 text-xs text-amber-300">
+                    {staleDrafts.length} draft
+                    {staleDrafts.length === 1 ? "" : "s"} older than 3 days
+                    should be reviewed before they go stale.
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {(["live", "upcoming", "ended"] as CampaignSegment[]).map(
+                  (segment) => (
+                    <button
+                      key={segment}
+                      type="button"
+                      onClick={() => setCampaignTab(segment)}
+                      className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.09em] ${
+                        campaignTab === segment
+                          ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-black"
+                          : "border-zinc-700 text-zinc-300"
+                      }`}
+                    >
+                      {segment} ({segmentedCampaigns[segment].length})
+                    </button>
+                  ),
+                )}
+                <a
+                  href="#founder-campaign-list"
+                  className="border border-zinc-700 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.09em] text-zinc-300 transition-colors hover:border-[var(--color-primary)] hover:text-white"
+                >
+                  View All
+                </a>
+              </div>
             </div>
           </div>
 
@@ -282,7 +341,10 @@ function FounderDashboardPage() {
           {!loadingCampaigns &&
           !campaignError &&
           segmentedCampaigns[campaignTab].length > 0 ? (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div
+              id="founder-campaign-list"
+              className="grid grid-cols-1 gap-5 md:grid-cols-2"
+            >
               {segmentedCampaigns[campaignTab].map((campaign) => (
                 <CampaignCard
                   key={campaign.id}

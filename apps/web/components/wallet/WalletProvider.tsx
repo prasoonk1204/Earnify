@@ -84,6 +84,25 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const logWalletFailure = useCallback(
+    async (reason: string, address?: string | null) => {
+      try {
+        await fetch(`${apiBaseUrl}/api/users/me/wallet/connect-failure`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reason,
+            walletAddress: address ?? undefined,
+          }),
+        });
+      } catch {
+        // Best-effort admin logging only.
+      }
+    },
+    [],
+  );
+
   // ---- On mount: check Freighter installation + rehydrate from localStorage ----
   useEffect(() => {
     let cancelled = false;
@@ -159,7 +178,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const freighter = await getFreighter();
 
       if (!freighter) {
-        setConnectError("Freighter extension is not installed");
+        const message = "Freighter extension is not installed";
+        setConnectError(message);
+        void logWalletFailure(message);
         return;
       }
 
@@ -167,11 +188,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       if (result.error) {
         setConnectError(result.error);
+        void logWalletFailure(result.error, result.address);
         return;
       }
 
       if (!result.address) {
-        setConnectError("No address returned from Freighter");
+        const message = "No address returned from Freighter";
+        setConnectError(message);
+        void logWalletFailure(message);
         return;
       }
 
@@ -180,13 +204,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem(DISCONNECTED_KEY);
       void persistWalletToApi(result.address);
     } catch (err) {
-      setConnectError(
-        err instanceof Error ? err.message : "Failed to connect wallet",
-      );
+      const message =
+        err instanceof Error ? err.message : "Failed to connect wallet";
+      setConnectError(message);
+      void logWalletFailure(message);
     } finally {
       setIsConnecting(false);
     }
-  }, [persistWalletToApi]);
+  }, [logWalletFailure, persistWalletToApi]);
 
   // ---- disconnectWallet ----
   const disconnectWallet = useCallback(() => {

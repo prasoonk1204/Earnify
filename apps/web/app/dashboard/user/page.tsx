@@ -376,6 +376,36 @@ function DashboardPage() {
   }, [campaigns]);
 
   const campaignItems = segmentedCampaigns[campaignTab];
+  const pendingPayoutCount =
+    payoutHistory?.payouts.filter((payout) => payout.status === "PENDING")
+      .length ?? 0;
+  const failedPayoutCount =
+    payoutHistory?.payouts.filter((payout) => payout.status === "FAILED")
+      .length ?? 0;
+  const nextAction = useMemo(() => {
+    if (!effectiveWalletAddress) {
+      return "Connect your wallet first so payouts and campaign actions feel predictable.";
+    }
+
+    if (pendingPayoutCount > 0) {
+      return "You have payouts waiting. Claim or retry those before they age in the queue.";
+    }
+
+    if (segmentedCampaigns.live.length > 0) {
+      return "You have live campaigns available now. Pick one and submit a qualifying post.";
+    }
+
+    if (segmentedCampaigns.upcoming.length > 0) {
+      return "You are set up. Watch upcoming campaigns and join when they switch live.";
+    }
+
+    return "Everything looks stable right now. Check back when new campaigns launch.";
+  }, [
+    effectiveWalletAddress,
+    pendingPayoutCount,
+    segmentedCampaigns.live.length,
+    segmentedCampaigns.upcoming.length,
+  ]);
 
   const handleSwitchRole = async (nextRole: "FOUNDER" | "USER") => {
     setSwitchingRole(true);
@@ -433,23 +463,44 @@ function DashboardPage() {
         <div className="grid gap-7 lg:grid-cols-[1fr_370px]">
           <section className="space-y-5">
             <div className="surface-card rounded-sm p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                {(["live", "upcoming", "ended"] as CampaignSegment[]).map(
-                  (segment) => (
-                    <button
-                      key={segment}
-                      type="button"
-                      onClick={() => setCampaignTab(segment)}
-                      className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.09em] ${
-                        campaignTab === segment
-                          ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-black"
-                          : "border-zinc-700 text-zinc-300"
-                      }`}
-                    >
-                      {segment} ({segmentedCampaigns[segment].length})
-                    </button>
-                  ),
-                )}
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.1em] text-zinc-500">
+                    Next Best Action
+                  </p>
+                  <p className="mt-2 max-w-2xl text-sm text-zinc-300">
+                    {nextAction}
+                  </p>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    Live: {segmentedCampaigns.live.length} • Upcoming:{" "}
+                    {segmentedCampaigns.upcoming.length} • Pending payouts:{" "}
+                    {pendingPayoutCount}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(["live", "upcoming", "ended"] as CampaignSegment[]).map(
+                    (segment) => (
+                      <button
+                        key={segment}
+                        type="button"
+                        onClick={() => setCampaignTab(segment)}
+                        className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.09em] ${
+                          campaignTab === segment
+                            ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-black"
+                            : "border-zinc-700 text-zinc-300"
+                        }`}
+                      >
+                        {segment} ({segmentedCampaigns[segment].length})
+                      </button>
+                    ),
+                  )}
+                  <a
+                    href="#creator-campaign-list"
+                    className="border border-zinc-700 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.09em] text-zinc-300 transition-colors hover:border-[var(--color-primary)] hover:text-white"
+                  >
+                    View All
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -476,7 +527,10 @@ function DashboardPage() {
             ) : null}
 
             {!loadingCampaigns && !campaignError && campaignItems.length > 0 ? (
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <div
+                id="creator-campaign-list"
+                className="grid grid-cols-1 gap-5 md:grid-cols-2"
+              >
                 {campaignItems.map((campaign) => (
                   <CampaignCard
                     key={campaign.id}
@@ -594,6 +648,9 @@ function DashboardPage() {
                       Connect wallet to receive payouts
                     </p>
                     <ConnectWalletButton />
+                    <p className="text-[11px] text-zinc-500">
+                      Wallet status affects payout claims and founder actions.
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-3 text-center">
@@ -603,6 +660,10 @@ function DashboardPage() {
                       {effectiveWalletAddress.slice(-6)}
                     </p>
                     <ConnectWalletButton />
+                    <p className="text-[11px] text-zinc-500">
+                      Pending payouts: {pendingPayoutCount} • Failed:{" "}
+                      {failedPayoutCount}
+                    </p>
                   </div>
                 )}
               </div>
@@ -657,7 +718,7 @@ function DashboardPage() {
                                 claimingPayoutId === payout.id ||
                                 !effectiveWalletAddress
                               }
-                              className="border border-[var(--color-primary)] bg-[var(--color-primary)] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-black disabled:opacity-50"
+                              className="border border-[var(--color-primary)] bg-[var(--color-primary)] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-black disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-700 disabled:text-zinc-200 disabled:opacity-80"
                             >
                               {claimingPayoutId === payout.id
                                 ? "..."

@@ -9,6 +9,27 @@ function truncate(address: string) {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
+async function copyText(value: string) {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  if (typeof document === "undefined") {
+    throw new Error("Clipboard is not available");
+  }
+
+  const input = document.createElement("textarea");
+  input.value = value;
+  input.setAttribute("readonly", "true");
+  input.style.position = "fixed";
+  input.style.opacity = "0";
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand("copy");
+  document.body.removeChild(input);
+}
+
 export function ConnectWalletButton() {
   const {
     walletAddress,
@@ -21,6 +42,24 @@ export function ConnectWalletButton() {
   } = useWallet();
 
   const [showDisconnect, setShowDisconnect] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "done" | "error">(
+    "idle",
+  );
+
+  const handleCopy = async () => {
+    if (!walletAddress) {
+      return;
+    }
+
+    try {
+      await copyText(walletAddress);
+      setCopyState("done");
+      setTimeout(() => setCopyState("idle"), 1800);
+    } catch {
+      setCopyState("error");
+      setTimeout(() => setCopyState("idle"), 2200);
+    }
+  };
 
   // ---- Freighter not installed ----
   if (!isFreighterInstalled) {
@@ -80,6 +119,20 @@ export function ConnectWalletButton() {
                 type="button"
                 role="menuitem"
                 onClick={() => {
+                  void handleCopy();
+                }}
+                className="mb-1 w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-zinc-100 transition-colors hover:bg-white/5"
+              >
+                {copyState === "done"
+                  ? "Copied wallet address"
+                  : copyState === "error"
+                    ? "Copy failed, try again"
+                    : "Copy wallet address"}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
                   disconnectWallet();
                   setShowDisconnect(false);
                 }}
@@ -103,7 +156,7 @@ export function ConnectWalletButton() {
           void connectWallet();
         }}
         disabled={isConnecting}
-        className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] px-5 py-2 text-xs font-bold text-white shadow-[0_0_15px_-3px_rgba(99,102,241,0.4)] backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:shadow-[0_0_20px_-3px_rgba(99,102,241,0.6)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+        className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)] px-4 py-2 text-xs font-bold text-white shadow-[0_0_15px_-3px_rgba(99,102,241,0.4)] backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:shadow-[0_0_20px_-3px_rgba(99,102,241,0.6)] disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-200 disabled:opacity-75 disabled:hover:translate-y-0 sm:px-5"
       >
         {isConnecting ? (
           <>
@@ -119,7 +172,8 @@ export function ConnectWalletButton() {
               aria-hidden
               className="inline-block h-2 w-2 rounded-full bg-white/80"
             />
-            Connect Wallet
+            <span className="sm:hidden">Connect</span>
+            <span className="hidden sm:inline">Connect Wallet</span>
           </>
         )}
       </button>

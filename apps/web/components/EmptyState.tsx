@@ -9,7 +9,7 @@ type EmptyStateProps = {
 function EmptyState({ title, description, variant }: EmptyStateProps) {
   return (
     <div className="surface-card rounded-sm p-10 flex flex-col items-center justify-center text-center">
-      <div className="mx-auto w-full max-w-[240px] opacity-80 mix-blend-screen">
+      <div className="mx-auto block w-full max-w-[180px] opacity-80 mix-blend-screen sm:max-w-[240px]">
         <svg
           viewBox="0 0 260 140"
           role="img"
