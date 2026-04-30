@@ -187,22 +187,60 @@ Below are 5+ verified Stellar testnet wallet addresses.
 ## DApp Screenshots
 
 ### Home Page
-![alt text](image-2.png)
-![alt text](image-1.png)
+<table>
+  <tr>
+    <td><img src="image-2.png" alt="Home page screenshot 1" /></td>
+    <td><img src="image-1.png" alt="Home page screenshot 2" /></td>
+  </tr>
+</table>
 
 
 ### Founder Dashboard 
 #### Creating Campaign
-![alt text](image-6.png)
-![alt text](image-5.png)
-![alt text](image-4.png)
+<table>
+  <tr>
+    <td><img src="image-6.png" alt="Founder create campaign screenshot 1" /></td>
+    <td><img src="image-5.png" alt="Founder create campaign screenshot 2" /></td>
+  </tr>
+  <tr>
+    <td><img src="image-4.png" alt="Founder create campaign screenshot 3" /></td>
+    <td></td>
+  </tr>
+</table>
 
 #### Live Campaign
-![alt text](image-3.png)
+<table>
+  <tr>
+    <td><img src="image-3.png" alt="Founder live campaign screenshot" /></td>
+    <td></td>
+  </tr>
+</table>
 
 ### Creator Dashboaard
-![alt text](image.png)
+<table>
+  <tr>
+    <td><img src="image.png" alt="Creator dashboard screenshot" /></td>
+    <td></td>
+  </tr>
+</table>
 
+
+### Mobile Responsiveness
+<table>
+  <tr>
+    <td><img src="image-9.png" alt="Mobile responsiveness screenshot 1" /></td>
+    <td><img src="image-10.png" alt="Mobile responsiveness screenshot 2" /></td>
+    <td><img src="image-11.png" alt="Mobile responsiveness screenshot 3" /></td>
+  </tr>
+</table>
+
+### CI/CD Pipeline
+<table>
+  <tr>
+    <td><img src="image-8.png" alt="CI CD pipeline screenshot" /></td>
+    <td></td>
+  </tr>
+</table>
 
 ## Architecture
 
