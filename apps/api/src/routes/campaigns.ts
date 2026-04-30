@@ -82,6 +82,41 @@ function writeSse(
   response.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
+async function expireStaleDraftCampaigns(founderId: string) {
+  const expirationCutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+
+  const staleDrafts = await prisma.campaign.findMany({
+    where: {
+      founderId,
+      status: CampaignStatus.DRAFT,
+      createdAt: { lt: expirationCutoff },
+    },
+    select: {
+      id: true,
+      title: true,
+      createdAt: true,
+    },
+  });
+
+  if (staleDrafts.length === 0) {
+    return 0;
+  }
+
+  await prisma.campaign.deleteMany({
+    where: {
+      id: { in: staleDrafts.map((campaign) => campaign.id) },
+    },
+  });
+
+  console.info("Expired stale draft campaigns", {
+    founderId,
+    count: staleDrafts.length,
+    campaignIds: staleDrafts.map((campaign) => campaign.id),
+  });
+
+  return staleDrafts.length;
+}
+
 async function waitForOnChainEnded(
   contractId: string,
   attempts = 8,
@@ -416,6 +451,9 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
 
   // Founders see all their own campaigns + active campaigns
   if (authenticatedUserRole === "FOUNDER" && authenticatedUserId) {
+    const expiredDraftCount = await expireStaleDraftCampaigns(
+      authenticatedUserId,
+    );
     const [activeCampaigns, founderCampaigns] = await Promise.all([
       prisma.campaign.findMany({
         where: { status: CampaignStatus.ACTIVE },
@@ -441,6 +479,11 @@ campaignsRouter.get("/", optionalAuth, async (request, response) => {
       ...founderCampaigns,
       ...activeCampaigns.filter((c) => !founderIds.has(c.id)),
     ];
+
+    response.setHeader(
+      "x-earnify-expired-draft-count",
+      String(expiredDraftCount),
+    );
 
     sendSuccess(
       response,

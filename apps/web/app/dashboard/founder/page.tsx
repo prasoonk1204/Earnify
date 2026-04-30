@@ -67,6 +67,7 @@ function FounderDashboardPage() {
   const [campaignError, setCampaignError] = useState<string | null>(null);
   const [switchingRole, setSwitchingRole] = useState(false);
   const [campaignTab, setCampaignTab] = useState<CampaignSegment>("live");
+  const [expiredDraftCount, setExpiredDraftCount] = useState(0);
 
   useEffect(() => {
     const fetchCampaigns = async () => {
@@ -88,6 +89,9 @@ function FounderDashboardPage() {
           return;
         }
 
+        setExpiredDraftCount(
+          Number(response.headers.get("x-earnify-expired-draft-count") ?? "0"),
+        );
         const ownCampaigns = payload.data.filter(
           (campaign) => campaign.founderId === user?.id,
         );
@@ -286,6 +290,13 @@ function FounderDashboardPage() {
                     {staleDrafts.length} draft
                     {staleDrafts.length === 1 ? "" : "s"} older than 3 days
                     should be reviewed before they go stale.
+                  </p>
+                ) : null}
+                {expiredDraftCount > 0 ? (
+                  <p className="mt-2 text-xs text-zinc-400">
+                    {expiredDraftCount} stale draft
+                    {expiredDraftCount === 1 ? " was" : "s were"} auto-expired
+                    after 3 days without funding.
                   </p>
                 ) : null}
               </div>

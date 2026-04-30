@@ -87,6 +87,39 @@ const STEP_LABELS = [
   "Fund on Stellar",
 ];
 
+const QUICK_START_TEMPLATES = [
+  {
+    id: "launch",
+    label: "Product Launch",
+    title: "Launch Week Creator Push",
+    description:
+      "Share a quick walkthrough, highlight the main benefit, and include a personal reason to try the product this week.",
+    platforms: ["X", "LINKEDIN"],
+    keywords: "#Earnify, launch week, creator campaign",
+    budget: "250",
+  },
+  {
+    id: "ugc",
+    label: "UGC Reviews",
+    title: "UGC Review Sprint",
+    description:
+      "Creators should post short-form reviews showing real usage, key outcomes, and one honest takeaway for their audience.",
+    platforms: ["INSTAGRAM", "X"],
+    keywords: "#review, #ugc, honest take",
+    budget: "150",
+  },
+  {
+    id: "b2b",
+    label: "B2B Awareness",
+    title: "Founder Story Campaign",
+    description:
+      "Invite founders and operators to share why the product matters, who it helps, and what problem it removes from their workflow.",
+    platforms: ["LINKEDIN"],
+    keywords: "#founder, workflow, product story",
+    budget: "300",
+  },
+] as const;
+
 // ---------------------------------------------------------------------------
 // Field error helper
 // ---------------------------------------------------------------------------
@@ -614,6 +647,25 @@ function CreateCampaignPage() {
     }
   };
 
+  const applyQuickStart = (
+    templateId: (typeof QUICK_START_TEMPLATES)[number]["id"],
+  ) => {
+    const template = QUICK_START_TEMPLATES.find(
+      (entry) => entry.id === templateId,
+    );
+    if (!template) {
+      return;
+    }
+
+    setTitle(template.title);
+    setDescription(template.description);
+    setPlatforms([...template.platforms]);
+    setKeywordsInput(template.keywords);
+    setBudget(template.budget);
+    setErrors({});
+    setDraftStatus("saved");
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -877,6 +929,33 @@ function CreateCampaignPage() {
                     ? "Restored your last local draft."
                     : "Draft saved locally while you work."}
                 </p>
+              ) : null}
+              {!createdCampaign ? (
+                <div className="rounded-2xl border border-[var(--color-border)] bg-[#0D0F14] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">
+                        Quick start templates
+                      </p>
+                      <p className="text-xs text-[var(--color-muted)]">
+                        Prefill the form when you want to get a campaign live
+                        faster.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {QUICK_START_TEMPLATES.map((template) => (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => applyQuickStart(template.id)}
+                          className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-bold text-white transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                        >
+                          {template.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               ) : null}
             </header>
 
