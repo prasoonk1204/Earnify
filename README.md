@@ -4,7 +4,7 @@
 
 [![Stellar](https://img.shields.io/badge/Blockchain-Stellar-purple)](https://stellar.org)
 
-**Website URL:** [earnify-web.vercel.app](https://earnify-web.vercel.app)
+**Website URL:** [earnify-web3.vercel.app](https://earnify-web3.vercel.app)
 
 > A decentralized platform that transforms social media marketing into a fair earning opportunity. Founders deposit marketing budgets on Stellar blockchain, creators promote products on social platforms, and automated smart contracts distribute earnings based on engagement - no middlemen, complete transparency.
 
@@ -101,7 +101,7 @@ Earnify creates a **transparent, performance-based marketing ecosystem** where:
 
 ## Live Website
 
-**Website URL:** [earnify-web.vercel.app](https://earnify-web.vercel.app)
+**Website URL:** [earnify-web3.vercel.app](https://earnify-web3.vercel.app)
 
 **Deployment Details:**
 - **Frontend:** Deployed on Vercel (Next.js App)
