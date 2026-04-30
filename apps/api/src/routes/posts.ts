@@ -32,6 +32,17 @@ function randomInRange(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function normalizePostUrl(value: string) {
+  try {
+    const url = new URL(value.trim());
+    url.hash = "";
+    url.search = "";
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return value.trim();
+  }
+}
+
 async function runSimulatedPostCheck(postId: string) {
   await new Promise((resolve) =>
     setTimeout(resolve, randomInRange(1200, 3200)),
@@ -138,6 +149,8 @@ postsRouter.post("/", requireAuth, async (request, response) => {
     return;
   }
 
+  const normalizedPostUrl = normalizePostUrl(postUrl);
+
   const parsedPlatform = parseSocialPlatform(platform);
   if (!parsedPlatform) {
     sendError(
@@ -178,11 +191,34 @@ postsRouter.post("/", requireAuth, async (request, response) => {
     return;
   }
 
+  const existingPost = await prisma.post.findFirst({
+    where: {
+      campaignId,
+      userId: request.user.id,
+      postUrl: normalizedPostUrl,
+    },
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+
+  if (existingPost) {
+    sendError(
+      response,
+      "You already submitted this post URL for the campaign",
+      409,
+      "DUPLICATE_POST_SUBMISSION",
+    );
+    return;
+  }
+
   const post = await prisma.post.create({
     data: {
       campaignId,
       userId: request.user.id,
-      postUrl,
+      postUrl: normalizedPostUrl,
       platform: parsedPlatform,
       status: PostStatus.PENDING,
     },

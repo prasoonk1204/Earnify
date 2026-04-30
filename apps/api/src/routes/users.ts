@@ -35,6 +35,18 @@ function getExplorerUrl(term: string | null) {
     : null;
 }
 
+function detectBrowser(userAgent: string | undefined) {
+  const value = userAgent?.toLowerCase() ?? "";
+
+  if (value.includes("edg/")) return "Edge";
+  if (value.includes("chrome/")) return "Chrome";
+  if (value.includes("firefox/")) return "Firefox";
+  if (value.includes("safari/") && !value.includes("chrome/")) return "Safari";
+  if (value.includes("brave/")) return "Brave";
+
+  return "Unknown";
+}
+
 usersRouter.get("/:id/payouts", requireAuth, async (request, response) => {
   const userId = parseIdParam(request.params.id);
 
@@ -132,6 +144,42 @@ usersRouter.patch("/me/wallet", requireAuth, async (request, response) => {
 
   sendSuccess(response, updatedUser);
 });
+
+usersRouter.post(
+  "/me/wallet/connect-failure",
+  requireAuth,
+  async (request, response) => {
+    if (!request.user) {
+      sendError(response, "Unauthorized", 401);
+      return;
+    }
+
+    const body = (request.body ?? {}) as {
+      reason?: string;
+      walletAddress?: string;
+    };
+    const reason =
+      typeof body.reason === "string" && body.reason.trim().length > 0
+        ? body.reason.trim()
+        : "Unknown wallet connection error";
+    const walletAddress =
+      typeof body.walletAddress === "string" &&
+      isValidStellarPublicKey(body.walletAddress.trim())
+        ? body.walletAddress.trim()
+        : null;
+    const browser = detectBrowser(request.headers["user-agent"]);
+
+    console.warn("Wallet connection failed", {
+      userId: request.user.id,
+      browser,
+      walletAddress,
+      reason,
+      userAgent: request.headers["user-agent"] ?? "unknown",
+    });
+
+    sendSuccess(response, { logged: true, browser });
+  },
+);
 
 usersRouter.patch("/:id/wallet", requireAuth, async (request, response) => {
   const userId = parseIdParam(request.params.id);
