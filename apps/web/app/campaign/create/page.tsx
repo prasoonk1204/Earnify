@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-
-import { useRouter } from "next/navigation";
 
 import type { ApiResponse } from "@earnify/shared";
 import { withAuth } from "../../../components/auth/withAuth";
@@ -11,6 +9,7 @@ import { FundCampaignStep } from "../../../components/campaign/FundCampaignStep"
 
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+const DRAFT_STORAGE_KEY = "earnify_campaign_draft_v1";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -109,10 +108,17 @@ type Step1Props = {
   title: string;
   description: string;
   errors: FieldErrors;
+  titleInputRef?: { current: HTMLInputElement | null };
   onChange: (field: "title" | "description", value: string) => void;
 };
 
-function Step1BasicInfo({ title, description, errors, onChange }: Step1Props) {
+function Step1BasicInfo({
+  title,
+  description,
+  errors,
+  titleInputRef,
+  onChange,
+}: Step1Props) {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -124,9 +130,11 @@ function Step1BasicInfo({ title, description, errors, onChange }: Step1Props) {
         </label>
         <input
           id="title"
+          ref={titleInputRef}
           type="text"
           value={title}
           onChange={(e) => onChange("title", e.target.value)}
+          autoFocus
           placeholder="e.g. Earnify Launch — Q3 2026"
           className="w-full rounded-xl border border-[var(--color-border)] bg-[#0D0F14] px-4 py-3.5 text-white transition-all focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
         />
@@ -186,6 +194,7 @@ function Step2PlatformsKeywords({
               <button
                 key={id}
                 type="button"
+                data-platform-chip={id}
                 onClick={() => onTogglePlatform(id)}
                 className={`rounded-xl border px-5 py-3 text-sm font-bold transition-all duration-200 ${
                   selected
@@ -288,6 +297,10 @@ function Step3BudgetDates({
           </span>
         </div>
         <FieldError message={errors.budget} />
+        <p className="text-xs text-[var(--color-muted)]">
+          Budget accepts decimals, but we recommend rounded XLM values to make
+          campaign funding easier to read.
+        </p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
@@ -323,6 +336,7 @@ function Step3BudgetDates({
             type="datetime-local"
             value={endDate}
             onChange={(e) => onChange("endDate", e.target.value)}
+            min={new Date().toISOString().slice(0, 16)}
             className="w-full rounded-xl border border-[var(--color-border)] bg-[#0D0F14] px-4 py-3.5 text-white transition-all focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
           />
           <FieldError message={errors.endDate} />
@@ -529,7 +543,7 @@ function FundedSuccessPanel({
 // ---------------------------------------------------------------------------
 
 function CreateCampaignPage() {
-  const router = useRouter();
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   // Form state
   const [step, setStep] = useState(1);
@@ -553,12 +567,139 @@ function CreateCampaignPage() {
     contractId: string;
     txHash: string;
   } | null>(null);
+  const [draftStatus, setDraftStatus] = useState<
+    "idle" | "saved" | "restored"
+  >("idle");
 
   // Derived
   const keywords = keywordsInput
     .split(",")
     .map((k) => k.trim())
     .filter(Boolean);
+
+  const focusFirstInvalidField = (fieldErrors: FieldErrors) => {
+    if (fieldErrors.title) {
+      titleInputRef.current?.focus();
+      return;
+    }
+
+    if (fieldErrors.description) {
+      document.getElementById("description")?.focus();
+      return;
+    }
+
+    if (fieldErrors.platforms) {
+      document.querySelector<HTMLButtonElement>('button[data-platform-chip="X"]')
+        ?.focus();
+      return;
+    }
+
+    if (fieldErrors.requiredKeywords) {
+      document.getElementById("keywords")?.focus();
+      return;
+    }
+
+    if (fieldErrors.budget) {
+      document.getElementById("budget")?.focus();
+      return;
+    }
+
+    if (fieldErrors.startDate) {
+      document.getElementById("startDate")?.focus();
+      return;
+    }
+
+    if (fieldErrors.endDate) {
+      document.getElementById("endDate")?.focus();
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const rawDraft = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!rawDraft) {
+      return;
+    }
+
+    try {
+      const draft = JSON.parse(rawDraft) as {
+        title?: string;
+        description?: string;
+        platforms?: string[];
+        keywordsInput?: string;
+        budget?: string;
+        startDate?: string;
+        endDate?: string;
+        savedAt?: string;
+      };
+
+      if (!draft.title && !draft.description && !draft.keywordsInput) {
+        return;
+      }
+
+      setTitle(draft.title ?? "");
+      setDescription(draft.description ?? "");
+      setPlatforms(Array.isArray(draft.platforms) ? draft.platforms : []);
+      setKeywordsInput(draft.keywordsInput ?? "");
+      setBudget(draft.budget ?? "");
+      setStartDate(draft.startDate ?? "");
+      setEndDate(draft.endDate ?? "");
+      setDraftStatus("restored");
+    } catch {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || createdCampaign) {
+      return;
+    }
+
+    const hasDraftContent = [
+      title,
+      description,
+      keywordsInput,
+      budget,
+      startDate,
+      endDate,
+      platforms.join(","),
+    ].some((value) => value.trim().length > 0);
+
+    if (!hasDraftContent) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      window.localStorage.setItem(
+        DRAFT_STORAGE_KEY,
+        JSON.stringify({
+          title,
+          description,
+          platforms,
+          keywordsInput,
+          budget,
+          startDate,
+          endDate,
+          savedAt: new Date().toISOString(),
+        }),
+      );
+      setDraftStatus((previous) => (previous === "restored" ? previous : "saved"));
+    }, 600);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    budget,
+    createdCampaign,
+    description,
+    endDate,
+    keywordsInput,
+    platforms,
+    startDate,
+    title,
+  ]);
 
   // ---- Validation per step ----
   function validateStep(s: number): FieldErrors {
@@ -608,6 +749,7 @@ function CreateCampaignPage() {
     const errs = validateStep(step);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      focusFirstInvalidField(errs);
       return;
     }
     setErrors({});
@@ -664,6 +806,7 @@ function CreateCampaignPage() {
             payload.errors.endDate
           )
             setStep(3);
+          focusFirstInvalidField(payload.errors);
         } else {
           setSubmitError(payload.error ?? "Failed to create campaign");
         }
@@ -671,6 +814,7 @@ function CreateCampaignPage() {
       }
 
       setCreatedCampaign(payload.data);
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
       // Advance to step 5 (Fund on Stellar)
       setStep(5);
     } catch {
@@ -693,6 +837,8 @@ function CreateCampaignPage() {
     setEndDate("");
     setErrors({});
     setSubmitError(null);
+    setDraftStatus("idle");
+    window.localStorage.removeItem(DRAFT_STORAGE_KEY);
   }
 
   return (
@@ -714,6 +860,24 @@ function CreateCampaignPage() {
                 Design your marketing bounty. Campaign launch now requires
                 funding via Freighter in the final step.
               </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-muted)]">
+                <span className="rounded-full border border-[var(--color-border)] px-3 py-1">
+                  1. Save draft
+                </span>
+                <span className="rounded-full border border-[var(--color-border)] px-3 py-1">
+                  2. Connect wallet
+                </span>
+                <span className="rounded-full border border-[var(--color-border)] px-3 py-1">
+                  3. Fund and go live
+                </span>
+              </div>
+              {draftStatus !== "idle" ? (
+                <p className="text-sm text-[var(--color-secondary)]">
+                  {draftStatus === "restored"
+                    ? "Restored your last local draft."
+                    : "Draft saved locally while you work."}
+                </p>
+              ) : null}
             </header>
 
             {/* Step indicator */}
@@ -755,6 +919,7 @@ function CreateCampaignPage() {
                         title={title}
                         description={description}
                         errors={errors}
+                        titleInputRef={titleInputRef}
                         onChange={(field, value) => {
                           if (field === "title") setTitle(value);
                           else setDescription(value);
@@ -806,7 +971,7 @@ function CreateCampaignPage() {
                         <button
                           type="button"
                           onClick={handleBack}
-                          className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-[#2A2D3A]"
+                          className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-[#2A2D3A] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-300 disabled:opacity-80"
                         >
                           ← Back
                         </button>
@@ -817,7 +982,7 @@ function CreateCampaignPage() {
                       <button
                         type="button"
                         onClick={handleNext}
-                        className="rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-bold text-white shadow-lg shadow-[var(--color-primary)]/20 transition-transform hover:-translate-y-0.5 hover:shadow-[var(--color-primary)]/40"
+                        className="rounded-full bg-[var(--color-primary)] px-8 py-3 text-sm font-bold text-white shadow-lg shadow-[var(--color-primary)]/20 transition-transform hover:-translate-y-0.5 hover:shadow-[var(--color-primary)]/40 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-200 disabled:opacity-80"
                       >
                         Next Step →
                       </button>
@@ -829,7 +994,7 @@ function CreateCampaignPage() {
                         type="button"
                         onClick={handleBack}
                         disabled={submitting}
-                        className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-[#2A2D3A] disabled:opacity-50"
+                        className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-[#2A2D3A] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-300 disabled:opacity-80"
                       >
                         ← Edit Details
                       </button>
@@ -884,6 +1049,15 @@ function CreateCampaignPage() {
                 <p className="text-xs text-[var(--color-muted)] leading-relaxed">
                   Confirm everything looks right, save the draft, and prepare
                   your wallet.
+                </p>
+              </li>
+              <li className="relative pl-6 before:absolute before:left-0 before:top-2 before:h-1.5 before:w-1.5 before:rounded-full before:bg-[var(--color-secondary)]">
+                <p className="text-sm font-bold text-white mb-1">
+                  What happens next
+                </p>
+                <p className="text-xs text-[var(--color-muted)] leading-relaxed">
+                  Drafts autosave locally while you edit. After save, connect
+                  Freighter once and fund the campaign to switch it live.
                 </p>
               </li>
             </ul>
